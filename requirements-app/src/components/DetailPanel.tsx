@@ -214,7 +214,7 @@ function InfoTab({ requirement, requirements, parentReq, grandParent }: {
           <MetaRow label="Автор" value={requirement.author || '—'} />
           <MetaRow label="Создано" value={fmtDate(requirement.created_at)} />
           <MetaRow label="Обновлено" value={fmtDate(requirement.updated_at)} />
-          {parentReq && <MetaRow label={requirement.type === 'ft' ? 'БФ' : 'ИС'} value={`${parentReq.req_id} — ${parentReq.title}`} />}
+          {parentReq && <MetaRow label={requirement.type === 'ft' ? 'БФ' : requirement.type === 'bf' ? 'ИС / МД' : requirement.type === 'mod' ? 'ИС' : 'Родитель'} value={`${parentReq.req_id} — ${parentReq.title}`} />}
           {grandParent && <MetaRow label="ИС" value={`${grandParent.req_id} — ${grandParent.title}`} />}
         </MetaGrid>
       </Section>
@@ -516,7 +516,7 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
 function ChildrenSection({ requirement, requirements }: { requirement: Requirement; requirements: Requirement[] }) {
   const children = requirements.filter(r => r.parent_id === requirement.id)
   if (children.length === 0) return null
-  const label = requirement.type === 'is' ? 'Функциональные блоки (БФ)' : 'Требования (ФТ)'
+  const label = requirement.type === 'is' ? 'Модули и блоки' : requirement.type === 'mod' ? 'Функциональные блоки (БФ)' : 'Требования (ФТ)'
 
   return (
     <div style={{ padding: '0 20px 20px' }}>

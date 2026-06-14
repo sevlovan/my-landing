@@ -49,7 +49,7 @@ function registerIpcHandlers() {
   // Requirements
   ipcMain.handle('req:list', () => listRequirements())
   ipcMain.handle('req:get', (_e, id: number) => getRequirement(id))
-  ipcMain.handle('req:generateId', (_e, type: 'is' | 'bf' | 'ft', parentId?: number | null) =>
+  ipcMain.handle('req:generateId', (_e, type: 'is' | 'mod' | 'bf' | 'ft', parentId?: number | null) =>
     generateReqId(type, parentId)
   )
   ipcMain.handle('req:create', (_e, data: Omit<Requirement, 'id' | 'created_at' | 'updated_at'>) =>

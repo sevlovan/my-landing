@@ -42,7 +42,8 @@ export function RequirementForm({
   }, [type, isEdit])
 
   const parentOptions = requirements.filter(r => {
-    if (type === 'bf') return r.type === 'is'
+    if (type === 'mod') return r.type === 'is'
+    if (type === 'bf') return r.type === 'is' || r.type === 'mod'
     if (type === 'ft') return r.type === 'bf'
     return false
   })
@@ -51,7 +52,7 @@ export function RequirementForm({
     const e: Record<string, string> = {}
     if (!title.trim()) e.title = 'Обязательное поле'
     if (isEdit && !changedBy.trim()) e.changedBy = 'Укажите, кто вносит изменения'
-    if ((type === 'bf' || type === 'ft') && !parentId) e.parentId = 'Выберите родительский элемент'
+    if ((type === 'mod' || type === 'bf' || type === 'ft') && !parentId) e.parentId = 'Выберите родительский элемент'
     return e
   }
 
@@ -83,7 +84,7 @@ export function RequirementForm({
   }
 
   const isFT = type === 'ft'
-  const needsParent = type === 'bf' || type === 'ft'
+  const needsParent = type === 'mod' || type === 'bf' || type === 'ft'
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -93,6 +94,7 @@ export function RequirementForm({
             disabled={isEdit}
             style={{ ...inputStyle, background: isEdit ? 'var(--gray-50)' : 'white' }}>
             <option value="is">ИС — Информационная система</option>
+            <option value="mod">МД — Модуль</option>
             <option value="bf">БФ — Функциональный блок</option>
             <option value="ft">ФТ — Функциональное требование</option>
           </select>
@@ -163,7 +165,7 @@ export function RequirementForm({
 
       {needsParent && (
         <FieldGroup
-          label={`${type === 'bf' ? 'Информационная система (ИС) *' : 'Функциональный блок (БФ) *'}`}
+          label={type === 'mod' ? 'Информационная система (ИС) *' : type === 'bf' ? 'Система или Модуль (ИС / МД) *' : 'Функциональный блок (БФ) *'}
           error={errors.parentId}
         >
           <select

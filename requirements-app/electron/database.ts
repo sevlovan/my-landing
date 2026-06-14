@@ -19,14 +19,14 @@ function initSchema() {
   const verRow = db.prepare('SELECT ver FROM _schema_ver LIMIT 1').get() as { ver: number } | undefined
   const ver = verRow?.ver ?? 0
 
-  if (ver < 2) {
+  if (ver < 3) {
     db.exec(`
       DROP TABLE IF EXISTS approvals;
       DROP TABLE IF EXISTS remarks;
       DROP TABLE IF EXISTS requirement_versions;
       DROP TABLE IF EXISTS requirements;
       DELETE FROM _schema_ver;
-      INSERT INTO _schema_ver (ver) VALUES (2);
+      INSERT INTO _schema_ver (ver) VALUES (3);
     `)
   }
 
@@ -37,7 +37,7 @@ function initSchema() {
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       full_description TEXT DEFAULT '',
-      type TEXT NOT NULL CHECK(type IN ('is','bf','ft')),
+      type TEXT NOT NULL CHECK(type IN ('is','mod','bf','ft')),
       parent_id INTEGER REFERENCES requirements(id) ON DELETE SET NULL,
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('high','medium','low')),
       status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','approved','rejected','in_review','rework')),
@@ -246,7 +246,7 @@ function saveVersion(req: Requirement, changedBy: string, changeComment: string)
   })
 }
 
-export function generateReqId(type: 'is' | 'bf' | 'ft', parentId?: number | null): string {
+export function generateReqId(type: 'is' | 'mod' | 'bf' | 'ft', parentId?: number | null): string {
   const database = getDb()
 
   if (type === 'is') {
@@ -256,11 +256,28 @@ export function generateReqId(type: 'is' | 'bf' | 'ft', parentId?: number | null
     return `ИС-${String(count + 1).padStart(3, '0')}`
   }
 
-  if (type === 'bf') {
+  if (type === 'mod') {
     let isNum = '1'
     if (parentId) {
       const parent = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string } | undefined
       if (parent) isNum = parent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+    }
+    const count = (database.prepare(
+      `SELECT COUNT(*) as c FROM requirements WHERE type = 'mod' AND parent_id = ? AND is_deleted = 0`
+    ).get(parentId ?? 0) as { c: number }).c
+    return `МД-${isNum}.${String(count + 1).padStart(2, '0')}`
+  }
+
+  if (type === 'bf') {
+    let isNum = '1'
+    if (parentId) {
+      const parent = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string; type: string; parent_id: number | null } | undefined
+      if (parent?.type === 'is') {
+        isNum = parent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      } else if (parent?.type === 'mod' && parent.parent_id) {
+        const grandParent = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(parent.parent_id) as { req_id: string } | undefined
+        if (grandParent) isNum = grandParent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      }
     }
     const count = (database.prepare(
       `SELECT COUNT(*) as c FROM requirements WHERE type = 'bf' AND is_deleted = 0`
@@ -271,10 +288,15 @@ export function generateReqId(type: 'is' | 'bf' | 'ft', parentId?: number | null
   // ft
   let isNum = '1'
   if (parentId) {
-    const bf = database.prepare('SELECT req_id, parent_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string; parent_id: number | null } | undefined
+    const bf = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string; type: string; parent_id: number | null } | undefined
     if (bf?.parent_id) {
-      const isRec = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(bf.parent_id) as { req_id: string } | undefined
-      if (isRec) isNum = isRec.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      const bfParent = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(bf.parent_id) as { req_id: string; type: string; parent_id: number | null } | undefined
+      if (bfParent?.type === 'is') {
+        isNum = bfParent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      } else if (bfParent?.type === 'mod' && bfParent.parent_id) {
+        const isRec = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(bfParent.parent_id) as { req_id: string } | undefined
+        if (isRec) isNum = isRec.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      }
     }
   }
   const count = (database.prepare(

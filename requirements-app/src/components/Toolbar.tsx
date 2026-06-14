@@ -30,6 +30,7 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
   }
 
   const isCount = requirements.filter(r => r.type === 'is').length
+  const modCount = requirements.filter(r => r.type === 'mod').length
   const bfCount = requirements.filter(r => r.type === 'bf').length
   const ftCount = requirements.filter(r => r.type === 'ft').length
 
@@ -43,6 +44,7 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
         <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{requirements.length} элементов</span>
         <span style={{ color: 'var(--gray-300)' }}>|</span>
         <span style={{ color: '#7c3aed', fontWeight: 600 }}>{isCount} ИС</span>
+        <span style={{ color: '#0891b2', fontWeight: 600 }}>{modCount} МД</span>
         <span style={{ color: '#2563eb', fontWeight: 600 }}>{bfCount} БФ</span>
         <span style={{ color: '#16a34a', fontWeight: 600 }}>{ftCount} ФТ</span>
       </div>

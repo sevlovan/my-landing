@@ -10,7 +10,7 @@ interface TableViewProps {
 
 type SortKey = 'req_id' | 'title' | 'type' | 'priority' | 'status' | 'author' | 'created_at'
 
-const typeOrder: Record<RequirementType, number> = { is: 0, bf: 1, ft: 2 }
+const typeOrder: Record<RequirementType, number> = { is: 0, mod: 1, bf: 2, ft: 3 }
 const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
 const statusOrder: Record<Status, number> = { draft: 0, in_review: 1, rework: 2, approved: 3, rejected: 4 }
 
@@ -49,7 +49,7 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)' }}>Фильтры:</span>
         <FilterSelect label="Тип" value={filterType} onChange={setFilterType}
-          options={[['all', 'Все типы'], ['is', 'ИС'], ['bf', 'БФ'], ['ft', 'ФТ']]} />
+          options={[['all', 'Все типы'], ['is', 'ИС'], ['mod', 'МД'], ['bf', 'БФ'], ['ft', 'ФТ']]} />
         <FilterSelect label="Статус" value={filterStatus} onChange={setFilterStatus}
           options={[['all', 'Все статусы'], ['draft', 'Черновик'], ['in_review', 'На согласовании'], ['approved', 'Согласовано'], ['rework', 'На доработке'], ['rejected', 'Отклонено']]} />
         <FilterSelect label="Приоритет" value={filterPriority} onChange={setFilterPriority}

@@ -1,4 +1,4 @@
-export type RequirementType = 'is' | 'bf' | 'ft'
+export type RequirementType = 'is' | 'mod' | 'bf' | 'ft'
 export type Priority = 'high' | 'medium' | 'low'
 export type Status = 'draft' | 'approved' | 'rejected' | 'in_review' | 'rework'
 
@@ -62,18 +62,21 @@ export interface TreeNode {
 
 export const TYPE_LABELS: Record<RequirementType, string> = {
   is: 'ИС',
+  mod: 'МД',
   bf: 'БФ',
   ft: 'ФТ',
 }
 
 export const TYPE_LONG_LABELS: Record<RequirementType, string> = {
   is: 'Информационная система',
+  mod: 'Модуль',
   bf: 'Функциональный блок',
   ft: 'Функциональное требование',
 }
 
 export const TYPE_COLORS: Record<RequirementType, string> = {
   is: '#7c3aed',
+  mod: '#0891b2',
   bf: '#2563eb',
   ft: '#16a34a',
 }
