@@ -22,7 +22,7 @@ function createWindow() {
       nodeIntegration: false,
     },
     backgroundColor: '#f8fafc',
-    title: 'СУИД — Управление требованиями',
+    title: 'Управление требованиями',
   })
 
   if (isDev) {
