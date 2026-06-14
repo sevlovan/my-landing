@@ -10,6 +10,8 @@ export function useRequirements() {
     try {
       const data = await window.api.req.list()
       setRequirements(data)
+    } catch (err) {
+      console.error('Failed to load requirements:', err)
     } finally {
       setLoading(false)
     }
@@ -38,19 +40,19 @@ export function useRequirements() {
 }
 
 export function buildTree(requirements: Requirement[]): TreeNode[] {
-  const epics = requirements.filter(r => r.type === 'epic')
-  const features = requirements.filter(r => r.type === 'feature')
-  const stories = requirements.filter(r => r.type === 'story')
+  const isSystems = requirements.filter(r => r.type === 'is')
+  const bfBlocks = requirements.filter(r => r.type === 'bf')
+  const ftItems = requirements.filter(r => r.type === 'ft')
 
-  return epics.map(epic => ({
-    requirement: epic,
-    children: features
-      .filter(f => f.parent_id === epic.id)
-      .map(feature => ({
-        requirement: feature,
-        children: stories
-          .filter(s => s.parent_id === feature.id)
-          .map(story => ({ requirement: story, children: [] })),
+  return isSystems.map(is => ({
+    requirement: is,
+    children: bfBlocks
+      .filter(bf => bf.parent_id === is.id)
+      .map(bf => ({
+        requirement: bf,
+        children: ftItems
+          .filter(ft => ft.parent_id === bf.id)
+          .map(ft => ({ requirement: ft, children: [] })),
       })),
   }))
 }

@@ -138,7 +138,10 @@ function VersionDiff({ version }: { version: RequirementVersion }) {
 
 const labelMap = {
   priority: { high: 'Высокий', medium: 'Средний', low: 'Низкий' } as Record<string, string>,
-  status: { draft: 'Черновик', approved: 'Утверждено', rejected: 'Отклонено', in_review: 'На проверке' } as Record<string, string>,
+  status: {
+    draft: 'Черновик', approved: 'Согласовано', rejected: 'Отклонено',
+    in_review: 'На согласовании', rework: 'На доработке',
+  } as Record<string, string>,
 }
 
 function formatDate(iso: string) {

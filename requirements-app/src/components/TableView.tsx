@@ -10,9 +10,9 @@ interface TableViewProps {
 
 type SortKey = 'req_id' | 'title' | 'type' | 'priority' | 'status' | 'author' | 'created_at'
 
-const typeOrder: Record<RequirementType, number> = { epic: 0, feature: 1, story: 2 }
+const typeOrder: Record<RequirementType, number> = { is: 0, bf: 1, ft: 2 }
 const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
-const statusOrder: Record<Status, number> = { draft: 0, in_review: 1, approved: 2, rejected: 3 }
+const statusOrder: Record<Status, number> = { draft: 0, in_review: 1, rework: 2, approved: 3, rejected: 4 }
 
 export function TableView({ requirements, selectedId, onSelect }: TableViewProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'req_id', dir: 1 })
@@ -31,7 +31,7 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
     let cmp = 0
     if (sort.key === 'type') cmp = typeOrder[a.type] - typeOrder[b.type]
     else if (sort.key === 'priority') cmp = priorityOrder[a.priority] - priorityOrder[b.priority]
-    else if (sort.key === 'status') cmp = statusOrder[a.status as Status] - statusOrder[b.status as Status]
+    else if (sort.key === 'status') cmp = (statusOrder[a.status as Status] ?? 0) - (statusOrder[b.status as Status] ?? 0)
     else cmp = String(a[sort.key]).localeCompare(String(b[sort.key]), 'ru')
     return cmp * sort.dir
   })
@@ -49,9 +49,9 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)' }}>Фильтры:</span>
         <FilterSelect label="Тип" value={filterType} onChange={setFilterType}
-          options={[['all', 'Все типы'], ['epic', 'Эпик'], ['feature', 'Фича'], ['story', 'История']]} />
+          options={[['all', 'Все типы'], ['is', 'ИС'], ['bf', 'БФ'], ['ft', 'ФТ']]} />
         <FilterSelect label="Статус" value={filterStatus} onChange={setFilterStatus}
-          options={[['all', 'Все статусы'], ['draft', 'Черновик'], ['in_review', 'На проверке'], ['approved', 'Утверждено'], ['rejected', 'Отклонено']]} />
+          options={[['all', 'Все статусы'], ['draft', 'Черновик'], ['in_review', 'На согласовании'], ['approved', 'Согласовано'], ['rework', 'На доработке'], ['rejected', 'Отклонено']]} />
         <FilterSelect label="Приоритет" value={filterPriority} onChange={setFilterPriority}
           options={[['all', 'Все'], ['high', 'Высокий'], ['medium', 'Средний'], ['low', 'Низкий']]} />
         <span style={{ fontSize: 12, color: 'var(--gray-400)', marginLeft: 'auto' }}>{sorted.length} из {requirements.length}</span>
@@ -62,7 +62,15 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
-              {([ ['req_id', 'ID', 80], ['title', 'Название', 280], ['type', 'Тип', 90], ['priority', 'Приоритет', 100], ['status', 'Статус', 110], ['author', 'Автор', 120], ['created_at', 'Создано', 110] ] as [SortKey, string, number][]).map(([key, label, width]) => (
+              {([
+                ['req_id', 'ID', 90],
+                ['title', 'Название / Описание', 280],
+                ['type', 'Тип', 70],
+                ['priority', 'Приоритет', 100],
+                ['status', 'Статус', 130],
+                ['author', 'Автор', 120],
+                ['created_at', 'Создано', 100],
+              ] as [SortKey, string, number][]).map(([key, label, width]) => (
                 <th key={key} onClick={() => toggleSort(key)}
                   style={{
                     padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--gray-600)',
@@ -82,14 +90,13 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
                   cursor: 'pointer',
                   background: selectedId === req.id ? 'var(--blue-light)' : i % 2 === 0 ? 'white' : 'var(--gray-50)',
                   borderBottom: '1px solid var(--gray-100)',
-                  transition: 'background 0.1s',
                 }}
                 onMouseEnter={e => { if (selectedId !== req.id) e.currentTarget.style.background = '#f0f4fe' }}
                 onMouseLeave={e => { e.currentTarget.style.background = selectedId === req.id ? 'var(--blue-light)' : i % 2 === 0 ? 'white' : 'var(--gray-50)' }}
               >
-                <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: 'var(--gray-500)', fontWeight: 500 }}>{req.req_id}</td>
-                <td style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--gray-800)', maxWidth: 280 }}>
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.title}</div>
+                <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: 'var(--gray-500)', fontWeight: 500, whiteSpace: 'nowrap' }}>{req.req_id}</td>
+                <td style={{ padding: '8px 12px', maxWidth: 280 }}>
+                  <div style={{ fontWeight: 500, color: 'var(--gray-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.title}</div>
                   {req.description && (
                     <div style={{ fontSize: 11, color: 'var(--gray-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {req.description}
@@ -100,13 +107,13 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
                 <td style={{ padding: '8px 12px' }}><Badge value={req.priority} kind="priority" small /></td>
                 <td style={{ padding: '8px 12px' }}><Badge value={req.status} kind="status" small /></td>
                 <td style={{ padding: '8px 12px', color: 'var(--gray-600)' }}>{req.author}</td>
-                <td style={{ padding: '8px 12px', color: 'var(--gray-400)' }}>{req.created_at.slice(0, 10)}</td>
+                <td style={{ padding: '8px 12px', color: 'var(--gray-400)', whiteSpace: 'nowrap' }}>{req.created_at.slice(0, 10)}</td>
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--gray-400)' }}>
-                  Нет требований, соответствующих фильтрам
+                  Нет записей, соответствующих фильтрам
                 </td>
               </tr>
             )}

@@ -13,27 +13,25 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
 
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 3500)
   }
 
   const doExport = async (format: 'excel' | 'word' | 'pdf') => {
     setExporting(format)
     try {
       const result = await window.api.export[format](requirements)
-      if (result.ok) showToast(`Файл сохранён: ${result.filePath}`)
-    } catch (e) {
-      showToast('Ошибка экспорта')
+      if (result.ok) showToast(`Сохранено: ${result.filePath}`)
+      else showToast('Экспорт отменён')
+    } catch {
+      showToast('Ошибка при экспорте')
     } finally {
       setExporting(null)
     }
   }
 
-  const total = requirements.length
-  const byType = {
-    epic: requirements.filter(r => r.type === 'epic').length,
-    feature: requirements.filter(r => r.type === 'feature').length,
-    story: requirements.filter(r => r.type === 'story').length,
-  }
+  const isCount = requirements.filter(r => r.type === 'is').length
+  const bfCount = requirements.filter(r => r.type === 'bf').length
+  const ftCount = requirements.filter(r => r.type === 'ft').length
 
   return (
     <div style={{
@@ -41,21 +39,16 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 20px', background: 'white', flexShrink: 0,
     }}>
-      {/* Stats */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--gray-600)' }}>
-        <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{total} требований</span>
+        <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{requirements.length} элементов</span>
         <span style={{ color: 'var(--gray-300)' }}>|</span>
-        <span>{byType.epic} эп</span>
-        <span>{byType.feature} фич</span>
-        <span>{byType.story} ист</span>
+        <span style={{ color: '#7c3aed', fontWeight: 600 }}>{isCount} ИС</span>
+        <span style={{ color: '#2563eb', fontWeight: 600 }}>{bfCount} БФ</span>
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>{ftCount} ФТ</span>
       </div>
 
-      {/* Right controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* View toggle */}
-        <div style={{
-          display: 'flex', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden',
-        }}>
+        <div style={{ display: 'flex', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
           {(['tree', 'table'] as const).map(v => (
             <button key={v} onClick={() => onViewChange(v)}
               style={{
@@ -70,7 +63,6 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
 
         <div style={{ width: 1, height: 24, background: 'var(--gray-200)' }} />
 
-        {/* Export */}
         <span style={{ fontSize: 12, color: 'var(--gray-500)', fontWeight: 500 }}>Экспорт:</span>
         {(['excel', 'word', 'pdf'] as const).map(fmt => (
           <button key={fmt} onClick={() => doExport(fmt)} disabled={!!exporting}
@@ -85,14 +77,12 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
         ))}
       </div>
 
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 500,
           background: 'var(--navy)', color: 'white', padding: '10px 18px',
           borderRadius: 10, fontSize: 13, fontWeight: 500,
-          boxShadow: 'var(--shadow-lg)', maxWidth: 400,
-          animation: 'slideIn 0.2s ease',
+          boxShadow: 'var(--shadow-lg)', maxWidth: 440,
         }}>
           {toast}
         </div>
