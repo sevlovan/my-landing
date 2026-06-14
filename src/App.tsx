@@ -162,7 +162,7 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
             </svg>
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--navy)' }}>СУИД</div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--navy)' }}>Управление требованиями</div>
             <div style={{ fontSize: 10, color: 'var(--gray-500)' }}>Реестр систем</div>
           </div>
         </div>
