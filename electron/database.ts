@@ -1,0 +1,361 @@
+import Database from 'better-sqlite3'
+import path from 'path'
+import { app } from 'electron'
+
+let db: Database.Database
+
+export function getDb(): Database.Database {
+  if (!db) {
+    const dbPath = path.join(app.getPath('userData'), 'requirements.db')
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    initSchema()
+  }
+  return db
+}
+
+function initSchema() {
+  db.exec(`CREATE TABLE IF NOT EXISTS _schema_ver (ver INTEGER NOT NULL DEFAULT 0)`)
+  const verRow = db.prepare('SELECT ver FROM _schema_ver LIMIT 1').get() as { ver: number } | undefined
+  const ver = verRow?.ver ?? 0
+
+  if (ver < 3) {
+    db.exec(`
+      DROP TABLE IF EXISTS approvals;
+      DROP TABLE IF EXISTS remarks;
+      DROP TABLE IF EXISTS requirement_versions;
+      DROP TABLE IF EXISTS requirements;
+      DELETE FROM _schema_ver;
+      INSERT INTO _schema_ver (ver) VALUES (3);
+    `)
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS requirements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      req_id TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      full_description TEXT DEFAULT '',
+      type TEXT NOT NULL CHECK(type IN ('is','mod','bf','ft')),
+      parent_id INTEGER REFERENCES requirements(id) ON DELETE SET NULL,
+      priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('high','medium','low')),
+      status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','approved','rejected','in_review','rework')),
+      cenn TEXT DEFAULT '',
+      author TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      is_deleted INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS requirement_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      requirement_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+      version INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      full_description TEXT DEFAULT '',
+      type TEXT NOT NULL,
+      parent_id INTEGER,
+      priority TEXT NOT NULL,
+      status TEXT NOT NULL,
+      cenn TEXT DEFAULT '',
+      author TEXT NOT NULL DEFAULT '',
+      changed_by TEXT NOT NULL DEFAULT '',
+      change_comment TEXT DEFAULT '',
+      changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS remarks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ft_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+      num_remark TEXT NOT NULL DEFAULT '',
+      text_remark TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_work','closed')),
+      author TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ft_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'in_review' CHECK(status IN ('in_review','approved','rework','rejected')),
+      comment TEXT DEFAULT '',
+      changed_by TEXT NOT NULL DEFAULT '',
+      changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_req_parent ON requirements(parent_id);
+    CREATE INDEX IF NOT EXISTS idx_req_type ON requirements(type);
+    CREATE INDEX IF NOT EXISTS idx_ver_req ON requirement_versions(requirement_id);
+    CREATE INDEX IF NOT EXISTS idx_rem_ft ON remarks(ft_id);
+    CREATE INDEX IF NOT EXISTS idx_appr_ft ON approvals(ft_id);
+  `)
+}
+
+export interface Requirement {
+  id: number
+  req_id: string
+  title: string
+  description: string
+  full_description: string
+  type: 'is' | 'bf' | 'ft'
+  parent_id: number | null
+  priority: 'high' | 'medium' | 'low'
+  status: 'draft' | 'approved' | 'rejected' | 'in_review' | 'rework'
+  cenn: string
+  author: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RequirementVersion {
+  id: number
+  requirement_id: number
+  version: number
+  title: string
+  description: string
+  full_description: string
+  type: string
+  parent_id: number | null
+  priority: string
+  status: string
+  cenn: string
+  author: string
+  changed_by: string
+  change_comment: string
+  changed_at: string
+}
+
+export interface Remark {
+  id: number
+  ft_id: number
+  num_remark: string
+  text_remark: string
+  status: 'open' | 'in_work' | 'closed'
+  author: string
+  created_at: string
+}
+
+export interface Approval {
+  id: number
+  ft_id: number
+  status: 'in_review' | 'approved' | 'rework' | 'rejected'
+  comment: string
+  changed_by: string
+  changed_at: string
+}
+
+export function listRequirements(): Requirement[] {
+  return getDb().prepare(
+    `SELECT * FROM requirements WHERE is_deleted = 0 ORDER BY type, req_id`
+  ).all() as Requirement[]
+}
+
+export function getRequirement(id: number): Requirement | undefined {
+  return getDb().prepare(
+    'SELECT * FROM requirements WHERE id = ? AND is_deleted = 0'
+  ).get(id) as Requirement | undefined
+}
+
+export function createRequirement(
+  data: Omit<Requirement, 'id' | 'created_at' | 'updated_at'>
+): Requirement {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const result = database.prepare(`
+    INSERT INTO requirements
+      (req_id, title, description, full_description, type, parent_id, priority, status, cenn, author, created_at, updated_at)
+    VALUES
+      (@req_id, @title, @description, @full_description, @type, @parent_id, @priority, @status, @cenn, @author, @created_at, @updated_at)
+  `).run({
+    req_id: data.req_id,
+    title: data.title,
+    description: data.description ?? '',
+    full_description: data.full_description ?? '',
+    type: data.type,
+    parent_id: data.parent_id ?? null,
+    priority: data.priority ?? 'medium',
+    status: data.status ?? 'draft',
+    cenn: data.cenn ?? '',
+    author: data.author ?? '',
+    created_at: now,
+    updated_at: now,
+  })
+  const req = getRequirement(result.lastInsertRowid as number)!
+  saveVersion(req, data.author || 'система', 'Создание записи')
+  return req
+}
+
+export function updateRequirement(
+  id: number,
+  data: Partial<Omit<Requirement, 'id' | 'created_at'>>,
+  changedBy: string,
+  changeComment = ''
+): Requirement {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const allowed = ['title', 'description', 'full_description', 'priority', 'status', 'cenn', 'author', 'parent_id']
+  const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
+  if (Object.keys(filtered).length === 0) return getRequirement(id)!
+  const fields = Object.keys(filtered).map(k => `${k} = @${k}`).join(', ')
+  database.prepare(`UPDATE requirements SET ${fields}, updated_at = @updated_at WHERE id = @id`)
+    .run({ ...filtered, updated_at: now, id })
+  const req = getRequirement(id)!
+  saveVersion(req, changedBy, changeComment)
+  return req
+}
+
+export function deleteRequirement(id: number): void {
+  getDb().prepare('UPDATE requirements SET is_deleted = 1 WHERE id = ?').run(id)
+}
+
+export function getVersions(requirementId: number): RequirementVersion[] {
+  return getDb().prepare(
+    'SELECT * FROM requirement_versions WHERE requirement_id = ? ORDER BY version DESC'
+  ).all(requirementId) as RequirementVersion[]
+}
+
+function saveVersion(req: Requirement, changedBy: string, changeComment: string) {
+  const database = getDb()
+  const lastVer = database.prepare(
+    'SELECT MAX(version) as v FROM requirement_versions WHERE requirement_id = ?'
+  ).get(req.id) as { v: number | null }
+  const version = (lastVer.v ?? 0) + 1
+  database.prepare(`
+    INSERT INTO requirement_versions
+      (requirement_id, version, title, description, full_description, type, parent_id,
+       priority, status, cenn, author, changed_by, change_comment)
+    VALUES
+      (@requirement_id, @version, @title, @description, @full_description, @type, @parent_id,
+       @priority, @status, @cenn, @author, @changed_by, @change_comment)
+  `).run({
+    requirement_id: req.id,
+    version,
+    title: req.title,
+    description: req.description ?? '',
+    full_description: req.full_description ?? '',
+    type: req.type,
+    parent_id: req.parent_id,
+    priority: req.priority,
+    status: req.status,
+    cenn: req.cenn ?? '',
+    author: req.author ?? '',
+    changed_by: changedBy,
+    change_comment: changeComment,
+  })
+}
+
+export function generateReqId(type: 'is' | 'mod' | 'bf' | 'ft', parentId?: number | null): string {
+  const database = getDb()
+
+  if (type === 'is') {
+    const count = (database.prepare(
+      `SELECT COUNT(*) as c FROM requirements WHERE type = 'is' AND is_deleted = 0`
+    ).get() as { c: number }).c
+    return `ИС-${String(count + 1).padStart(3, '0')}`
+  }
+
+  if (type === 'mod') {
+    let isNum = '1'
+    if (parentId) {
+      const parent = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string } | undefined
+      if (parent) isNum = parent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+    }
+    const count = (database.prepare(
+      `SELECT COUNT(*) as c FROM requirements WHERE type = 'mod' AND parent_id = ? AND is_deleted = 0`
+    ).get(parentId ?? 0) as { c: number }).c
+    return `МД-${isNum}.${String(count + 1).padStart(2, '0')}`
+  }
+
+  if (type === 'bf') {
+    let isNum = '1'
+    if (parentId) {
+      const parent = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string; type: string; parent_id: number | null } | undefined
+      if (parent?.type === 'is') {
+        isNum = parent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      } else if (parent?.type === 'mod' && parent.parent_id) {
+        const grandParent = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(parent.parent_id) as { req_id: string } | undefined
+        if (grandParent) isNum = grandParent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      }
+    }
+    const count = (database.prepare(
+      `SELECT COUNT(*) as c FROM requirements WHERE type = 'bf' AND is_deleted = 0`
+    ).get() as { c: number }).c
+    return `БФ-${isNum}.${String(count + 1).padStart(2, '0')}`
+  }
+
+  // ft
+  let isNum = '1'
+  if (parentId) {
+    const bf = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(parentId) as { req_id: string; type: string; parent_id: number | null } | undefined
+    if (bf?.parent_id) {
+      const bfParent = database.prepare('SELECT req_id, type, parent_id FROM requirements WHERE id = ?').get(bf.parent_id) as { req_id: string; type: string; parent_id: number | null } | undefined
+      if (bfParent?.type === 'is') {
+        isNum = bfParent.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      } else if (bfParent?.type === 'mod' && bfParent.parent_id) {
+        const isRec = database.prepare('SELECT req_id FROM requirements WHERE id = ?').get(bfParent.parent_id) as { req_id: string } | undefined
+        if (isRec) isNum = isRec.req_id.replace('ИС-', '').replace(/^0+/, '') || '1'
+      }
+    }
+  }
+  const count = (database.prepare(
+    `SELECT COUNT(*) as c FROM requirements WHERE type = 'ft' AND is_deleted = 0`
+  ).get() as { c: number }).c
+  return `ФТ-${isNum}.${String(count + 1).padStart(3, '0')}`
+}
+
+// --- Remarks ---
+export function listRemarks(ftId: number): Remark[] {
+  return getDb().prepare('SELECT * FROM remarks WHERE ft_id = ? ORDER BY id').all(ftId) as Remark[]
+}
+
+export function createRemark(data: Omit<Remark, 'id' | 'created_at'>): Remark {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const result = database.prepare(`
+    INSERT INTO remarks (ft_id, num_remark, text_remark, status, author, created_at)
+    VALUES (@ft_id, @num_remark, @text_remark, @status, @author, @created_at)
+  `).run({ ...data, created_at: now })
+  return database.prepare('SELECT * FROM remarks WHERE id = ?').get(result.lastInsertRowid) as Remark
+}
+
+export function updateRemark(id: number, data: Partial<Pick<Remark, 'status' | 'text_remark' | 'num_remark'>>): void {
+  const database = getDb()
+  const fields = Object.keys(data).map(k => `${k} = @${k}`).join(', ')
+  if (fields) database.prepare(`UPDATE remarks SET ${fields} WHERE id = @id`).run({ ...data, id })
+}
+
+export function deleteRemark(id: number): void {
+  getDb().prepare('DELETE FROM remarks WHERE id = ?').run(id)
+}
+
+// --- Approvals ---
+export function listApprovals(ftId: number): Approval[] {
+  return getDb().prepare('SELECT * FROM approvals WHERE ft_id = ? ORDER BY id DESC').all(ftId) as Approval[]
+}
+
+export function createApproval(data: Omit<Approval, 'id' | 'changed_at'>): Approval {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const result = database.prepare(`
+    INSERT INTO approvals (ft_id, status, comment, changed_by, changed_at)
+    VALUES (@ft_id, @status, @comment, @changed_by, @changed_at)
+  `).run({ ...data, changed_at: now })
+
+  // Sync requirement status
+  const statusMap: Record<string, string> = {
+    approved: 'approved', rework: 'rework', rejected: 'rejected', in_review: 'in_review',
+  }
+  database.prepare('UPDATE requirements SET status = ? WHERE id = ?').run(
+    statusMap[data.status] ?? 'in_review', data.ft_id
+  )
+
+  return database.prepare('SELECT * FROM approvals WHERE id = ?').get(result.lastInsertRowid) as Approval
+}
+
+export function getLastApproval(ftId: number): Approval | undefined {
+  return getDb().prepare(
+    'SELECT * FROM approvals WHERE ft_id = ? ORDER BY id DESC LIMIT 1'
+  ).get(ftId) as Approval | undefined
+}
