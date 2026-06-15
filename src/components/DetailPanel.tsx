@@ -556,7 +556,7 @@ function MetaGrid({ children }: { children: React.ReactNode }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 8, fontSize: 13 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 8, fontSize: 13 }}>
       <span style={{ color: 'var(--gray-500)', fontWeight: 500 }}>{label}</span>
       <span style={{ color: 'var(--gray-700)' }}>{value}</span>
     </div>
