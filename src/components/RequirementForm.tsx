@@ -84,6 +84,8 @@ export function RequirementForm({
   }
 
   const isFT = type === 'ft'
+  const isIS = type === 'is'
+  const showAuthor = isFT || isIS
   const needsParent = type === 'mod' || type === 'bf' || type === 'ft'
 
   return (
@@ -136,7 +138,7 @@ export function RequirementForm({
         </FieldGroup>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isFT ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isFT ? '1fr 1fr 1fr' : showAuthor ? '1fr 1fr' : '1fr', gap: 12 }}>
         {isFT && (
           <FieldGroup label="Приоритет" error={undefined}>
             <select value={priority} onChange={e => setPriority(e.target.value as Priority)} style={inputStyle}>
@@ -157,10 +159,12 @@ export function RequirementForm({
           </select>
         </FieldGroup>
 
-        <FieldGroup label="Автор" error={errors.author}>
-          <input value={author} onChange={e => { setAuthor(e.target.value); setErrors(p => ({ ...p, author: '' })) }}
-            placeholder="ФИО автора" style={inputStyle} />
-        </FieldGroup>
+        {showAuthor && (
+          <FieldGroup label={isIS ? 'Функциональный заказчик' : 'Автор'} error={errors.author}>
+            <input value={author} onChange={e => { setAuthor(e.target.value); setErrors(p => ({ ...p, author: '' })) }}
+              placeholder={isIS ? 'ФИО заказчика' : 'ФИО автора'} style={inputStyle} />
+          </FieldGroup>
+        )}
       </div>
 
       {needsParent && (
