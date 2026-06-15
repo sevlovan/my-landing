@@ -20,6 +20,8 @@
   --gray-800: #1e293b;
   --gray-900: #0f172a;
   --card-bg: #ffffff;
+  --item-selected: #e8eaf6;
+  --item-hover: #f1f5f9;
   --radius: 8px;
   --radius-lg: 12px;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
@@ -42,6 +44,8 @@
   --navy: #818cf8;
   --navy-dark: #6366f1;
   --card-bg: #1e293b;
+  --item-selected: #334155;
+  --item-hover: #253347;
   --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.2);
 }
 

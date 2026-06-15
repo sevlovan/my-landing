@@ -199,11 +199,11 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
               style={{
                 padding: '10px 12px', cursor: 'pointer',
                 borderLeft: `3px solid ${selectedISId === is.id ? TYPE_COLORS.is : 'transparent'}`,
-                background: selectedISId === is.id ? '#f5f3ff' : 'transparent',
+                background: selectedISId === is.id ? 'var(--item-selected)' : 'transparent',
                 borderBottom: '1px solid var(--gray-100)',
               }}
               onMouseEnter={e => { if (selectedISId !== is.id) e.currentTarget.style.background = 'var(--gray-50)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = selectedISId === is.id ? '#f5f3ff' : 'transparent' }}
+              onMouseLeave={e => { e.currentTarget.style.background = selectedISId === is.id ? 'var(--item-selected)' : 'transparent' }}
             >
               <div style={{ fontFamily: 'monospace', fontSize: 10, color: TYPE_COLORS.is, fontWeight: 700 }}>{is.req_id}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-800)', marginTop: 2, lineHeight: 1.3 }}>{is.title}</div>
@@ -328,16 +328,16 @@ function ModuleCard({ mod, requirements, selectedId, onSelect, onNew }: {
   const [open, setOpen] = useState(true)
 
   return (
-    <div style={{ border: '1px solid #bae6fd', borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--card-bg)' }}>
+    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--card-bg)' }}>
       <div
         style={{
           padding: '11px 16px', borderLeft: `4px solid ${TYPE_COLORS.mod}`,
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-          background: selectedId === mod.id ? '#ecfeff' : 'linear-gradient(to right, #f0f9ff, var(--card-bg))',
+          background: selectedId === mod.id ? 'var(--item-selected)' : 'linear-gradient(to right, var(--gray-50), var(--card-bg))',
         }}
         onClick={() => onSelect(mod)}
-        onMouseEnter={e => { if (selectedId !== mod.id) e.currentTarget.style.background = '#e0f7fa44' }}
-        onMouseLeave={e => { e.currentTarget.style.background = selectedId === mod.id ? '#ecfeff' : 'linear-gradient(to right, #f0f9ff, white)' }}
+        onMouseEnter={e => { if (selectedId !== mod.id) e.currentTarget.style.background = 'var(--item-hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = selectedId === mod.id ? 'var(--item-selected)' : 'linear-gradient(to right, var(--gray-50), var(--card-bg))' }}
       >
         <button onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
           style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--gray-400)', padding: 0, display: 'flex', visibility: bfItems.length > 0 ? 'visible' : 'hidden' }}>
@@ -358,7 +358,7 @@ function ModuleCard({ mod, requirements, selectedId, onSelect, onNew }: {
       </div>
 
       {open && bfItems.length > 0 && (
-        <div style={{ paddingLeft: 20, background: '#fafeff' }}>
+        <div style={{ paddingLeft: 20, background: 'var(--gray-50)' }}>
           {bfItems.map(bf => (
             <BFCard key={bf.id} bf={bf} requirements={requirements} selectedId={selectedId} onSelect={onSelect} onNew={onNew} nested />
           ))}
@@ -380,7 +380,7 @@ function BFCard({ bf, requirements, selectedId, onSelect, onNew, nested }: {
   const approvedFT = ftItems.filter(f => f.status === 'approved').length
   const reworkFT = ftItems.filter(f => f.status === 'rework').length
   const draftFT = ftItems.filter(f => f.status === 'draft').length
-  const bg = selectedId === bf.id ? '#eff6ff' : 'transparent'
+  const bg = selectedId === bf.id ? 'var(--item-selected)' : 'transparent'
 
   return (
     <div style={{
@@ -394,7 +394,7 @@ function BFCard({ bf, requirements, selectedId, onSelect, onNew, nested }: {
       <div
         style={{ padding: '10px 14px', borderLeft: `3px solid ${TYPE_COLORS.bf}`, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: bg }}
         onClick={() => onSelect(bf)}
-        onMouseEnter={e => { if (selectedId !== bf.id) e.currentTarget.style.background = '#f0f4fe' }}
+        onMouseEnter={e => { if (selectedId !== bf.id) e.currentTarget.style.background = 'var(--item-hover)' }}
         onMouseLeave={e => { e.currentTarget.style.background = bg }}
       >
         <button onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
@@ -431,13 +431,13 @@ function BFCard({ bf, requirements, selectedId, onSelect, onNew, nested }: {
 function FTRow({ ft, selectedId, onSelect }: { ft: Requirement; selectedId: number | null; onSelect: (r: Requirement) => void }) {
   const statusColor = STATUS_COLORS[ft.status] ?? '#64748b'
   const statusLabel = STATUS_LABELS[ft.status] ?? ft.status
-  const bg = selectedId === ft.id ? '#f0fdf4' : 'transparent'
+  const bg = selectedId === ft.id ? 'var(--item-selected)' : 'transparent'
 
   return (
     <div
       onClick={() => onSelect(ft)}
       style={{ padding: '7px 12px', borderBottom: '1px solid var(--gray-100)', borderLeft: `2px solid ${TYPE_COLORS.ft}`, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: bg }}
-      onMouseEnter={e => { if (selectedId !== ft.id) e.currentTarget.style.background = '#f0fdf4' }}
+      onMouseEnter={e => { if (selectedId !== ft.id) e.currentTarget.style.background = 'var(--item-hover)' }}
       onMouseLeave={e => { e.currentTarget.style.background = bg }}
     >
       <span style={{ fontFamily: 'monospace', fontSize: 10, color: TYPE_COLORS.ft, fontWeight: 700, flexShrink: 0 }}>{ft.req_id}</span>
