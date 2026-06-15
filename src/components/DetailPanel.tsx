@@ -211,7 +211,8 @@ function InfoTab({ requirement, requirements, parentReq, grandParent }: {
       <Section title="Реквизиты">
         <MetaGrid>
           <MetaRow label="Тип" value={TYPE_LONG_LABELS[requirement.type]} />
-          <MetaRow label="Автор" value={requirement.author || '—'} />
+          {requirement.type === 'is' && <MetaRow label="Функциональный заказчик" value={requirement.author || '—'} />}
+          {requirement.type === 'ft' && <MetaRow label="Автор" value={requirement.author || '—'} />}
           <MetaRow label="Создано" value={fmtDate(requirement.created_at)} />
           <MetaRow label="Обновлено" value={fmtDate(requirement.updated_at)} />
           {parentReq && <MetaRow label={requirement.type === 'ft' ? 'БФ' : requirement.type === 'bf' ? 'ИС / МД' : requirement.type === 'mod' ? 'ИС' : 'Родитель'} value={`${parentReq.req_id} — ${parentReq.title}`} />}
