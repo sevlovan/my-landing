@@ -88,11 +88,11 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
               <tr key={req.id} onClick={() => onSelect(req)}
                 style={{
                   cursor: 'pointer',
-                  background: selectedId === req.id ? 'var(--blue-light)' : i % 2 === 0 ? 'white' : 'var(--gray-50)',
+                  background: selectedId === req.id ? 'var(--item-selected)' : i % 2 === 0 ? 'var(--card-bg)' : 'var(--gray-50)',
                   borderBottom: '1px solid var(--gray-100)',
                 }}
-                onMouseEnter={e => { if (selectedId !== req.id) e.currentTarget.style.background = '#f0f4fe' }}
-                onMouseLeave={e => { e.currentTarget.style.background = selectedId === req.id ? 'var(--blue-light)' : i % 2 === 0 ? 'white' : 'var(--gray-50)' }}
+                onMouseEnter={e => { if (selectedId !== req.id) e.currentTarget.style.background = 'var(--item-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = selectedId === req.id ? 'var(--item-selected)' : i % 2 === 0 ? 'var(--card-bg)' : 'var(--gray-50)' }}
               >
                 <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: 'var(--gray-500)', fontWeight: 500, whiteSpace: 'nowrap' }}>{req.req_id}</td>
                 <td style={{ padding: '8px 12px', maxWidth: 280 }}>
