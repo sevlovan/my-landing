@@ -157,7 +157,7 @@ export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onC
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            background: 'white', borderRadius: 12, padding: 28, maxWidth: 380, width: '90%',
+            background: 'var(--card-bg)', borderRadius: 12, padding: 28, maxWidth: 380, width: '90%',
             boxShadow: 'var(--shadow-lg)',
           }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 10 }}>Удалить запись?</div>
@@ -166,7 +166,7 @@ export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onC
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setConfirmDelete(false)}
-                style={{ padding: '8px 18px', border: '1px solid var(--gray-300)', borderRadius: 8, background: 'white', cursor: 'pointer' }}>
+                style={{ padding: '8px 18px', border: '1px solid var(--gray-300)', borderRadius: 8, background: 'var(--card-bg)', cursor: 'pointer' }}>
                 Отмена
               </button>
               <button onClick={async () => { await onDelete(requirement.id); setConfirmDelete(false) }}
@@ -270,7 +270,7 @@ function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark
         <button onClick={() => setAdding(a => !a)}
           style={{
             padding: '5px 12px', border: '1px solid var(--gray-200)', borderRadius: 6,
-            background: adding ? 'var(--gray-100)' : 'white', fontSize: 12, fontWeight: 600,
+            background: adding ? 'var(--gray-100)' : 'var(--card-bg)', fontSize: 12, fontWeight: 600,
             color: 'var(--navy)', cursor: 'pointer',
           }}>
           {adding ? '✕ Отмена' : '+ Добавить'}
@@ -300,7 +300,7 @@ function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark
           </Field>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button onClick={() => setAdding(false)}
-              style={{ padding: '5px 14px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'white', cursor: 'pointer', fontSize: 12 }}>
+              style={{ padding: '5px 14px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12 }}>
               Отмена
             </button>
             <button onClick={handleAdd} disabled={saving || !textRemark.trim()}
@@ -347,7 +347,7 @@ function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark
                     <button onClick={() => handleStatusChange(r.id, r.status === 'open' ? 'in_work' : 'closed')}
                       style={{
                         padding: '2px 8px', border: '1px solid var(--gray-200)', borderRadius: 4,
-                        background: 'white', cursor: 'pointer', fontSize: 11, color: 'var(--gray-600)',
+                        background: 'var(--card-bg)', cursor: 'pointer', fontSize: 11, color: 'var(--gray-600)',
                       }}>
                       {r.status === 'open' ? 'В работу' : 'Закрыть'}
                     </button>
@@ -425,7 +425,7 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
         <button onClick={() => setAdding(a => !a)}
           style={{
             padding: '5px 12px', border: '1px solid var(--gray-200)', borderRadius: 6,
-            background: adding ? 'var(--gray-100)' : 'white', fontSize: 12, fontWeight: 600,
+            background: adding ? 'var(--gray-100)' : 'var(--card-bg)', fontSize: 12, fontWeight: 600,
             color: 'var(--navy)', cursor: 'pointer',
           }}>
           {adding ? '✕ Отмена' : '+ Решение'}
@@ -457,7 +457,7 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
           </Field>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button onClick={() => setAdding(false)}
-              style={{ padding: '5px 14px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'white', cursor: 'pointer', fontSize: 12 }}>
+              style={{ padding: '5px 14px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12 }}>
               Отмена
             </button>
             <button onClick={handleAdd} disabled={saving}
@@ -590,7 +590,7 @@ function ActionBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; la
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px',
       border: `1px solid ${danger ? '#fca5a5' : 'var(--gray-200)'}`,
-      borderRadius: 6, background: danger ? '#fff5f5' : 'white',
+      borderRadius: 6, background: danger ? '#fff5f5' : 'var(--card-bg)',
       color: danger ? '#dc2626' : 'var(--gray-600)',
       fontSize: 12, fontWeight: 500, cursor: 'pointer',
     }}>
@@ -600,8 +600,8 @@ function ActionBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; la
 }
 
 const panelStyle: React.CSSProperties = {
-  width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'white',
-  borderLeft: '1px solid var(--gray-200)', height: '100vh', overflow: 'hidden', position: 'relative',
+  width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--card-bg)',
+  borderLeft: '1px solid var(--gray-200)', height: '100%', overflow: 'hidden', position: 'relative',
 }
 
 const inputSm: React.CSSProperties = {

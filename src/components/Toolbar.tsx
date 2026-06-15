@@ -38,7 +38,7 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
     <div style={{
       height: 52, borderBottom: '1px solid var(--gray-200)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 20px', background: 'white', flexShrink: 0,
+      padding: '0 20px', background: 'var(--card-bg)', flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--gray-600)' }}>
         <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{requirements.length} элементов</span>
@@ -55,7 +55,7 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
             <button key={v} onClick={() => onViewChange(v)}
               style={{
                 padding: '5px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                background: view === v ? 'var(--navy)' : 'white',
+                background: view === v ? 'var(--navy)' : 'var(--card-bg)',
                 color: view === v ? 'white' : 'var(--gray-600)',
               }}>
               {v === 'tree' ? 'Дерево' : 'Таблица'}
@@ -70,7 +70,7 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
           <button key={fmt} onClick={() => doExport(fmt)} disabled={!!exporting}
             style={{
               padding: '5px 12px', border: '1px solid var(--gray-200)', borderRadius: 6,
-              background: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--card-bg)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               color: fmt === 'excel' ? '#16a34a' : fmt === 'word' ? '#2563eb' : '#dc2626',
               opacity: exporting === fmt ? 0.6 : 1,
             }}>

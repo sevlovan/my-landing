@@ -39,7 +39,7 @@ export function Sidebar({ requirements, selectedId, onSelect, onNew, search, onS
   return (
     <aside style={{
       width: 300, minWidth: 240, maxWidth: 380, display: 'flex', flexDirection: 'column',
-      background: 'white', borderRight: '1px solid var(--gray-200)', height: '100vh', overflow: 'hidden',
+      background: 'var(--card-bg)', borderRight: '1px solid var(--gray-200)', height: '100vh', overflow: 'hidden',
     }}>
       {/* Header */}
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gray-100)' }}>

@@ -24,7 +24,7 @@ export function HistoryPanel({ requirement, onClose }: HistoryPanelProps) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 680, maxHeight: '80vh', background: 'white', borderRadius: 16,
+        width: 680, maxHeight: '80vh', background: 'var(--card-bg)', borderRadius: 16,
         boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         {/* Header */}
@@ -76,7 +76,7 @@ export function HistoryPanel({ requirement, onClose }: HistoryPanelProps) {
                     }} onClick={() => setExpanded(expanded === v.id ? null : v.id)}>
                       <div style={{
                         padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
-                        background: expanded === v.id ? 'var(--gray-50)' : 'white',
+                        background: expanded === v.id ? 'var(--gray-100)' : 'var(--card-bg)',
                       }}>
                         <span style={{
                           background: 'var(--navy)', color: 'white', borderRadius: 6,

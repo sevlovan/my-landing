@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS } from './types'
 import { useRequirements } from './hooks/useRequirements'
 import { DetailPanel } from './components/DetailPanel'
@@ -17,6 +17,14 @@ export default function App() {
   const [createParentId, setCreateParentId] = useState<number | undefined>(undefined)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'tree' | 'table'>('tree')
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
+  )
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
   const selected = requirements.find(r => r.id === selectedId) ?? null
   const selectedIS = requirements.find(r => r.id === selectedISId && r.type === 'is') ?? null
@@ -79,6 +87,8 @@ export default function App() {
         onNew={() => handleNew('is')}
         search={search}
         onSearchChange={setSearch}
+        theme={theme}
+        onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -102,7 +112,7 @@ export default function App() {
           </div>
 
           {mode === 'create' && (
-            <div style={{ width: 500, flexShrink: 0, background: 'white', borderLeft: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div style={{ width: 500, flexShrink: 0, background: 'var(--card-bg)', borderLeft: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>Новая запись</div>
                 <button onClick={() => setMode('view')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4 }}>
@@ -138,13 +148,15 @@ export default function App() {
 
 // ── Left sidebar: IS list ──────────────────────────────────────────────────
 
-function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange }: {
+function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange, theme, onThemeToggle }: {
   systems: Requirement[]
   selectedISId: number | null
   onSelect: (id: number) => void
   onNew: () => void
   search: string
   onSearchChange: (v: string) => void
+  theme: 'light' | 'dark'
+  onThemeToggle: () => void
 }) {
   const filtered = systems.filter(r =>
     !search ||
@@ -153,7 +165,7 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
   )
 
   return (
-    <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', background: 'white', height: '100vh' }}>
+    <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', height: '100vh' }}>
       <div style={{ padding: '14px 12px 10px', borderBottom: '1px solid var(--gray-100)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{ width: 30, height: 30, borderRadius: 7, background: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -201,12 +213,18 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
       </div>
 
       <div style={{ padding: 10, borderTop: '1px solid var(--gray-100)' }}>
-        <button
-          onClick={onNew}
-          style={{ width: '100%', padding: '8px', background: 'var(--navy)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-        >
-          + Создать ИС
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={onNew}
+            style={{ flex: 1, padding: '8px', background: 'var(--navy)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+          >
+            + Создать ИС
+          </button>
+          <button onClick={onThemeToggle} title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            style={{ padding: '8px 10px', background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-600)', flexShrink: 0 }}>
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -243,7 +261,7 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew }: {
             {is.description && <p style={{ color: 'var(--gray-500)', margin: '6px 0 0', fontSize: 13, lineHeight: 1.5 }}>{is.description}</p>}
           </div>
           <button onClick={() => onSelect(is)}
-            style={{ padding: '6px 14px', border: '1px solid var(--gray-200)', borderRadius: 8, background: 'white', color: 'var(--gray-600)', fontSize: 13, cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
+            style={{ padding: '6px 14px', border: '1px solid var(--gray-200)', borderRadius: 8, background: 'var(--card-bg)', color: 'var(--gray-600)', fontSize: 13, cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
             Подробнее
           </button>
         </div>
@@ -310,12 +328,12 @@ function ModuleCard({ mod, requirements, selectedId, onSelect, onNew }: {
   const [open, setOpen] = useState(true)
 
   return (
-    <div style={{ border: '1px solid #bae6fd', borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'white' }}>
+    <div style={{ border: '1px solid #bae6fd', borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--card-bg)' }}>
       <div
         style={{
           padding: '11px 16px', borderLeft: `4px solid ${TYPE_COLORS.mod}`,
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-          background: selectedId === mod.id ? '#ecfeff' : 'linear-gradient(to right, #f0f9ff, white)',
+          background: selectedId === mod.id ? '#ecfeff' : 'linear-gradient(to right, #f0f9ff, var(--card-bg))',
         }}
         onClick={() => onSelect(mod)}
         onMouseEnter={e => { if (selectedId !== mod.id) e.currentTarget.style.background = '#e0f7fa44' }}
@@ -370,7 +388,7 @@ function BFCard({ bf, requirements, selectedId, onSelect, onNew, nested }: {
       borderRadius: nested ? 0 : 10,
       overflow: 'hidden',
       marginBottom: nested ? 0 : 10,
-      background: 'white',
+      background: 'var(--card-bg)',
       borderBottom: '1px solid var(--gray-100)',
     }}>
       <div
@@ -436,6 +454,23 @@ function Pill({ count, label, color }: { count: number; label: string; color: st
     <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, color, background: color + '15', fontWeight: 600, border: `1px solid ${color}30` }}>
       {count} {label}
     </span>
+  )
+}
+
+function SunIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+    </svg>
   )
 }
 

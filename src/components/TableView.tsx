@@ -132,7 +132,7 @@ function FilterSelect({ label, value, onChange, options }: {
     <select value={value} onChange={e => onChange(e.target.value)}
       style={{
         padding: '4px 10px', border: '1px solid var(--gray-200)', borderRadius: 6,
-        fontSize: 12, color: 'var(--gray-700)', background: 'white', cursor: 'pointer',
+        fontSize: 12, color: 'var(--gray-700)', background: 'var(--card-bg)', cursor: 'pointer',
       }}>
       {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
     </select>

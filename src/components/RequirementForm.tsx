@@ -92,7 +92,7 @@ export function RequirementForm({
         <FieldGroup label="Тип" error={undefined}>
           <select value={type} onChange={e => { if (!isEdit) setType(e.target.value as RequirementType) }}
             disabled={isEdit}
-            style={{ ...inputStyle, background: isEdit ? 'var(--gray-50)' : 'white' }}>
+            style={{ ...inputStyle, background: isEdit ? 'var(--gray-100)' : 'var(--card-bg)' }}>
             <option value="is">ИС — Информационная система</option>
             <option value="mod">МД — Модуль</option>
             <option value="bf">БФ — Функциональный блок</option>
@@ -104,7 +104,7 @@ export function RequirementForm({
           <input value={reqId} onChange={e => setReqId(e.target.value)}
             readOnly={isEdit}
             placeholder="Генерируется автоматически"
-            style={{ ...inputStyle, background: isEdit ? 'var(--gray-50)' : 'white', fontFamily: 'monospace' }} />
+            style={{ ...inputStyle, background: isEdit ? 'var(--gray-100)' : 'var(--card-bg)', fontFamily: 'monospace' }} />
         </FieldGroup>
       </div>
 
@@ -199,7 +199,7 @@ export function RequirementForm({
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
         <button type="button" onClick={onCancel}
-          style={{ padding: '8px 20px', border: '1px solid var(--gray-300)', borderRadius: 8, background: 'white', fontWeight: 500, cursor: 'pointer' }}>
+          style={{ padding: '8px 20px', border: '1px solid var(--gray-300)', borderRadius: 8, background: 'var(--card-bg)', fontWeight: 500, cursor: 'pointer' }}>
           Отмена
         </button>
         <button type="submit" disabled={saving}
