@@ -55,6 +55,13 @@ export interface Approval {
   changed_at: string
 }
 
+export interface User {
+  id: number
+  name: string
+  role: 'admin' | 'user'
+  created_at: string
+}
+
 export interface TreeNode {
   requirement: Requirement
   children: TreeNode[]
@@ -124,7 +131,14 @@ declare global {
       approval: {
         list: (ftId: number) => Promise<Approval[]>
         create: (data: Omit<Approval, 'id' | 'changed_at'>) => Promise<Approval>
+        update: (id: number, data: Partial<Pick<Approval, 'status' | 'comment' | 'changed_by'>>) => Promise<boolean>
         lastStatus: (ftId: number) => Promise<Approval | undefined>
+      }
+      user: {
+        list: () => Promise<User[]>
+        create: (data: Pick<User, 'name' | 'role'>) => Promise<User>
+        update: (id: number, data: Partial<Pick<User, 'name' | 'role'>>) => Promise<boolean>
+        delete: (id: number) => Promise<boolean>
       }
       export: {
         excel: (requirements: Requirement[]) => Promise<{ ok: boolean; filePath?: string }>

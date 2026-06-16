@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import { Requirement, RequirementType, Priority, Status, TYPE_LONG_LABELS } from '../types'
+import { Requirement, RequirementType, Priority, Status, TYPE_LONG_LABELS, User } from '../types'
+import { UserSelect } from './UserSelect'
 
 interface RequirementFormProps {
   initial?: Partial<Requirement>
   defaultType?: RequirementType
   defaultParentId?: number
   requirements: Requirement[]
+  users?: User[]
   onSave: (data: Omit<Requirement, 'id' | 'created_at' | 'updated_at'>, changedBy: string, comment: string) => Promise<void>
   onCancel: () => void
   isEdit?: boolean
 }
 
 export function RequirementForm({
-  initial, defaultType, defaultParentId, requirements, onSave, onCancel, isEdit,
+  initial, defaultType, defaultParentId, requirements, users = [], onSave, onCancel, isEdit,
 }: RequirementFormProps) {
   const [type, setType] = useState<RequirementType>(initial?.type ?? defaultType ?? 'is')
   const [title, setTitle] = useState(initial?.title ?? '')
@@ -161,8 +163,13 @@ export function RequirementForm({
 
         {showAuthor && (
           <FieldGroup label={isIS ? 'Функциональный заказчик' : 'Автор'} error={errors.author}>
-            <input value={author} onChange={e => { setAuthor(e.target.value); setErrors(p => ({ ...p, author: '' })) }}
-              placeholder={isIS ? 'ФИО заказчика' : 'ФИО автора'} style={inputStyle} />
+            <UserSelect
+              value={author}
+              onChange={v => { setAuthor(v); setErrors(p => ({ ...p, author: '' })) }}
+              users={users}
+              placeholder={isIS ? 'выберите заказчика' : 'выберите автора'}
+              style={inputStyle}
+            />
           </FieldGroup>
         )}
       </div>
@@ -190,8 +197,13 @@ export function RequirementForm({
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)', marginBottom: 10 }}>Информация об изменении</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
             <FieldGroup label="Кто изменяет *" error={errors.changedBy}>
-              <input value={changedBy} onChange={e => { setChangedBy(e.target.value); setErrors(p => ({ ...p, changedBy: '' })) }}
-                placeholder="ФИО" style={inputStyle} />
+              <UserSelect
+                value={changedBy}
+                onChange={v => { setChangedBy(v); setErrors(p => ({ ...p, changedBy: '' })) }}
+                users={users}
+                placeholder="выберите пользователя"
+                style={inputStyle}
+              />
             </FieldGroup>
             <FieldGroup label="Причина изменения" error={undefined}>
               <input value={comment} onChange={e => setComment(e.target.value)}

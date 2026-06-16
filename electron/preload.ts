@@ -20,7 +20,14 @@ contextBridge.exposeInMainWorld('api', {
   approval: {
     list: (ftId: number) => ipcRenderer.invoke('approval:list', ftId),
     create: (data: unknown) => ipcRenderer.invoke('approval:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('approval:update', id, data),
     lastStatus: (ftId: number) => ipcRenderer.invoke('approval:lastStatus', ftId),
+  },
+  user: {
+    list: () => ipcRenderer.invoke('user:list'),
+    create: (data: unknown) => ipcRenderer.invoke('user:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('user:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('user:delete', id),
   },
   export: {
     excel: (requirements: unknown) => ipcRenderer.invoke('export:excel', requirements),

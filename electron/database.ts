@@ -85,12 +85,24 @@ function initSchema() {
       changed_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin','user')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_req_parent ON requirements(parent_id);
     CREATE INDEX IF NOT EXISTS idx_req_type ON requirements(type);
     CREATE INDEX IF NOT EXISTS idx_ver_req ON requirement_versions(requirement_id);
     CREATE INDEX IF NOT EXISTS idx_rem_ft ON remarks(ft_id);
     CREATE INDEX IF NOT EXISTS idx_appr_ft ON approvals(ft_id);
   `)
+
+  const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
+  if (userCount === 0) {
+    db.prepare('INSERT INTO users (name, role) VALUES (?, ?)').run('Владимир Степанов', 'admin')
+  }
 }
 
 export interface Requirement {
@@ -144,6 +156,13 @@ export interface Approval {
   comment: string
   changed_by: string
   changed_at: string
+}
+
+export interface User {
+  id: number
+  name: string
+  role: 'admin' | 'user'
+  created_at: string
 }
 
 export function listRequirements(): Requirement[] {
@@ -358,4 +377,43 @@ export function getLastApproval(ftId: number): Approval | undefined {
   return getDb().prepare(
     'SELECT * FROM approvals WHERE ft_id = ? ORDER BY id DESC LIMIT 1'
   ).get(ftId) as Approval | undefined
+}
+
+export function updateApproval(id: number, data: Partial<Pick<Approval, 'status' | 'comment' | 'changed_by'>>): void {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const fields = Object.keys(data).map(k => `${k} = @${k}`).join(', ')
+  if (!fields) return
+  database.prepare(`UPDATE approvals SET ${fields}, changed_at = @changed_at WHERE id = @id`)
+    .run({ ...data, changed_at: now, id })
+  if (data.status) {
+    const row = database.prepare('SELECT ft_id FROM approvals WHERE id = ?').get(id) as { ft_id: number } | undefined
+    if (row) {
+      const latest = database.prepare('SELECT id FROM approvals WHERE ft_id = ? ORDER BY id DESC LIMIT 1').get(row.ft_id) as { id: number } | undefined
+      if (latest?.id === id) {
+        database.prepare('UPDATE requirements SET status = ? WHERE id = ?').run(data.status, row.ft_id)
+      }
+    }
+  }
+}
+
+// --- Users ---
+export function listUsers(): User[] {
+  return getDb().prepare('SELECT * FROM users ORDER BY role DESC, name').all() as User[]
+}
+
+export function createUser(data: Pick<User, 'name' | 'role'>): User {
+  const database = getDb()
+  const result = database.prepare('INSERT INTO users (name, role) VALUES (?, ?)').run(data.name, data.role)
+  return database.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid) as User
+}
+
+export function updateUser(id: number, data: Partial<Pick<User, 'name' | 'role'>>): void {
+  const database = getDb()
+  const fields = Object.keys(data).map(k => `${k} = @${k}`).join(', ')
+  if (fields) database.prepare(`UPDATE users SET ${fields} WHERE id = @id`).run({ ...data, id })
+}
+
+export function deleteUser(id: number): void {
+  getDb().prepare('DELETE FROM users WHERE id = ?').run(id)
 }

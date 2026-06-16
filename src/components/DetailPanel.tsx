@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { Requirement, Remark, Approval, STATUS_LABELS, STATUS_COLORS, TYPE_LONG_LABELS } from '../types'
+import { Requirement, Remark, Approval, STATUS_LABELS, STATUS_COLORS, TYPE_LONG_LABELS, User } from '../types'
 import { Badge } from './Badge'
 import { RequirementForm } from './RequirementForm'
 import { HistoryPanel } from './HistoryPanel'
+import { UserSelect } from './UserSelect'
 
 interface DetailPanelProps {
   requirement: Requirement
   requirements: Requirement[]
+  users?: User[]
   onUpdate: (id: number, data: Partial<Requirement>, changedBy: string, comment: string) => Promise<void>
   onDelete: (id: number) => Promise<void>
   onClose: () => void
@@ -14,7 +16,7 @@ interface DetailPanelProps {
 
 type Tab = 'info' | 'remarks' | 'approval'
 
-export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onClose }: DetailPanelProps) {
+export function DetailPanel({ requirement, requirements, users = [], onUpdate, onDelete, onClose }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -48,6 +50,7 @@ export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onC
           <RequirementForm
             initial={requirement}
             requirements={requirements}
+            users={users}
             isEdit
             onSave={async (data, changedBy, comment) => {
               await onUpdate(requirement.id, data, changedBy, comment)
@@ -129,6 +132,7 @@ export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onC
           <RemarksTab
             ftId={requirement.id}
             remarks={remarks}
+            users={users}
             onReload={reloadRemarks}
           />
         )}
@@ -136,6 +140,7 @@ export function DetailPanel({ requirement, requirements, onUpdate, onDelete, onC
           <ApprovalTab
             ftId={requirement.id}
             approvals={approvals}
+            users={users}
             onReload={async () => {
               await reloadApprovals()
               // also reload parent list to sync status badge
@@ -223,7 +228,7 @@ function InfoTab({ requirement, requirements, parentReq, grandParent }: {
   )
 }
 
-function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark[]; onReload: () => void }) {
+function RemarksTab({ ftId, remarks, users, onReload }: { ftId: number; remarks: Remark[]; users: User[]; onReload: () => void }) {
   const [adding, setAdding] = useState(false)
   const [numRemark, setNumRemark] = useState('')
   const [textRemark, setTextRemark] = useState('')
@@ -289,8 +294,8 @@ function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark
                 placeholder="ЦПС-123" style={inputSm} />
             </Field>
             <Field label="Автор">
-              <input value={remarkAuthor} onChange={e => setRemarkAuthor(e.target.value)}
-                placeholder="ФИО" style={inputSm} />
+              <UserSelect value={remarkAuthor} onChange={setRemarkAuthor} users={users}
+                placeholder="выберите автора" style={inputSm} />
             </Field>
           </div>
           <Field label="Текст замечания *">
@@ -373,12 +378,16 @@ function RemarksTab({ ftId, remarks, onReload }: { ftId: number; remarks: Remark
   )
 }
 
-function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: Approval[]; onReload: () => void }) {
+function ApprovalTab({ ftId, approvals, users, onReload }: { ftId: number; approvals: Approval[]; users: User[]; onReload: () => void }) {
   const [adding, setAdding] = useState(false)
   const [apprStatus, setApprStatus] = useState<Approval['status']>('in_review')
   const [apprComment, setApprComment] = useState('')
   const [apprBy, setApprBy] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editStatus, setEditStatus] = useState<Approval['status']>('in_review')
+  const [editComment, setEditComment] = useState('')
+  const [editBy, setEditBy] = useState('')
 
   const statusColors: Record<string, string> = {
     in_review: '#d97706', approved: '#16a34a', rework: '#ea580c', rejected: '#dc2626',
@@ -398,6 +407,19 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
       setApprComment(''); setApprBy(''); setApprStatus('in_review')
       setAdding(false)
       onReload()
+    } finally { setSaving(false) }
+  }
+
+  const startEdit = (a: Approval) => {
+    setEditingId(a.id); setEditStatus(a.status); setEditComment(a.comment); setEditBy(a.changed_by)
+  }
+
+  const handleEditSave = async () => {
+    if (!editingId) return
+    setSaving(true)
+    try {
+      await window.api.approval.update(editingId, { status: editStatus, comment: editComment.trim(), changed_by: editBy.trim() })
+      setEditingId(null); onReload()
     } finally { setSaving(false) }
   }
 
@@ -447,8 +469,8 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
             </select>
           </Field>
           <Field label="Кто принял решение">
-            <input value={apprBy} onChange={e => setApprBy(e.target.value)}
-              placeholder="ФИО" style={inputSm} />
+            <UserSelect value={apprBy} onChange={setApprBy} users={users}
+              placeholder="выберите пользователя" style={inputSm} />
           </Field>
           <Field label="Комментарий">
             <textarea value={apprComment} onChange={e => setApprComment(e.target.value)}
@@ -488,23 +510,68 @@ function ApprovalTab({ ftId, approvals, onReload }: { ftId: number; approvals: A
                 position: 'absolute', left: -5, top: 5,
                 width: 8, height: 8, borderRadius: '50%',
                 background: i === 0 ? (statusColors[a.status] ?? '#64748b') : 'var(--gray-300)',
-                border: '2px solid white',
+                border: '2px solid var(--card-bg)',
               }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 12, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
-                  color: statusColors[a.status], background: (statusColors[a.status] ?? '#64748b') + '15',
-                  border: `1px solid ${(statusColors[a.status] ?? '#64748b')}30`,
+              {editingId === a.id ? (
+                <div style={{
+                  background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
+                  borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
-                  {statusLabels[a.status] ?? a.status}
-                </span>
-                {a.changed_by && <span style={{ fontSize: 12, color: 'var(--gray-600)', fontWeight: 500 }}>{a.changed_by}</span>}
-                <span style={{ fontSize: 11, color: 'var(--gray-400)', marginLeft: 'auto' }}>{fmtDate(a.changed_at)}</span>
-              </div>
-              {a.comment && (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--gray-600)', lineHeight: 1.5, fontStyle: 'italic' }}>
-                  {a.comment}
-                </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <Field label="Решение">
+                      <select value={editStatus} onChange={e => setEditStatus(e.target.value as Approval['status'])} style={inputSm}>
+                        <option value="in_review">На согласовании</option>
+                        <option value="approved">Согласовано</option>
+                        <option value="rework">На доработке</option>
+                        <option value="rejected">Отклонено</option>
+                      </select>
+                    </Field>
+                    <Field label="Кто принял решение">
+                      <UserSelect value={editBy} onChange={setEditBy} users={users}
+                        placeholder="выберите" style={inputSm} />
+                    </Field>
+                  </div>
+                  <Field label="Комментарий">
+                    <textarea value={editComment} onChange={e => setEditComment(e.target.value)}
+                      rows={2} style={{ ...inputSm, resize: 'vertical' }} />
+                  </Field>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setEditingId(null)}
+                      style={{ padding: '4px 12px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12, color: 'var(--gray-700)' }}>
+                      Отмена
+                    </button>
+                    <button onClick={handleEditSave} disabled={saving}
+                      style={{ padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--navy)', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                      {saving ? '...' : 'Сохранить'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+                      color: statusColors[a.status], background: (statusColors[a.status] ?? '#64748b') + '15',
+                      border: `1px solid ${(statusColors[a.status] ?? '#64748b')}30`,
+                    }}>
+                      {statusLabels[a.status] ?? a.status}
+                    </span>
+                    {a.changed_by && <span style={{ fontSize: 12, color: 'var(--gray-600)', fontWeight: 500 }}>{a.changed_by}</span>}
+                    <span style={{ fontSize: 11, color: 'var(--gray-400)', marginLeft: 'auto' }}>{fmtDate(a.changed_at)}</span>
+                    <button onClick={() => startEdit(a)} title="Редактировать"
+                      style={{ padding: '2px 6px', border: '1px solid var(--gray-200)', borderRadius: 4, background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--gray-500)', display: 'flex', alignItems: 'center' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  </div>
+                  {a.comment && (
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--gray-600)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                      {a.comment}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           ))}

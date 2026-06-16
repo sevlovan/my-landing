@@ -4,7 +4,8 @@ import {
   listRequirements, getRequirement, createRequirement, updateRequirement,
   deleteRequirement, getVersions, generateReqId, Requirement,
   listRemarks, createRemark, updateRemark, deleteRemark,
-  listApprovals, createApproval, getLastApproval,
+  listApprovals, createApproval, getLastApproval, updateApproval,
+  listUsers, createUser, updateUser, deleteUser,
 } from './database'
 import { exportToExcel, exportToWord, exportToPdf } from './export'
 
@@ -69,7 +70,14 @@ function registerIpcHandlers() {
   // Approvals
   ipcMain.handle('approval:list', (_e, ftId: number) => listApprovals(ftId))
   ipcMain.handle('approval:create', (_e, data: Parameters<typeof createApproval>[0]) => createApproval(data))
+  ipcMain.handle('approval:update', (_e, id: number, data: Parameters<typeof updateApproval>[1]) => { updateApproval(id, data); return true })
   ipcMain.handle('approval:lastStatus', (_e, ftId: number) => getLastApproval(ftId))
+
+  // Users
+  ipcMain.handle('user:list', () => listUsers())
+  ipcMain.handle('user:create', (_e, data: Parameters<typeof createUser>[0]) => createUser(data))
+  ipcMain.handle('user:update', (_e, id: number, data: Parameters<typeof updateUser>[1]) => { updateUser(id, data); return true })
+  ipcMain.handle('user:delete', (_e, id: number) => { deleteUser(id); return true })
 
   // Exports
   ipcMain.handle('export:excel', async (_e, requirements: Requirement[]) => {

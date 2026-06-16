@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS } from './types'
 import { useRequirements } from './hooks/useRequirements'
+import { useUsers } from './hooks/useUsers'
 import { DetailPanel } from './components/DetailPanel'
 import { RequirementForm } from './components/RequirementForm'
 import { Toolbar } from './components/Toolbar'
 import { TableView } from './components/TableView'
+import { AdminPanel } from './components/AdminPanel'
 
 type Mode = 'view' | 'create'
 
 export default function App() {
   const { requirements, loading, create, update, remove } = useRequirements()
+  const { users } = useUsers()
+  const [showAdmin, setShowAdmin] = useState(false)
   const [selectedISId, setSelectedISId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [mode, setMode] = useState<Mode>('view')
@@ -80,6 +84,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
       <ISSidebar
         systems={isSystems}
         selectedISId={selectedISId}
@@ -89,6 +94,7 @@ export default function App() {
         onSearchChange={setSearch}
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        onAdminOpen={() => setShowAdmin(true)}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -124,6 +130,7 @@ export default function App() {
                   defaultType={createType}
                   defaultParentId={createParentId}
                   requirements={requirements}
+                  users={users}
                   onSave={async (data) => { await handleCreate(data) }}
                   onCancel={() => setMode('view')}
                 />
@@ -135,6 +142,7 @@ export default function App() {
             <DetailPanel
               requirement={selected}
               requirements={requirements}
+              users={users}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onClose={() => setSelectedId(null)}
@@ -148,7 +156,7 @@ export default function App() {
 
 // ── Left sidebar: IS list ──────────────────────────────────────────────────
 
-function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange, theme, onThemeToggle }: {
+function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange, theme, onThemeToggle, onAdminOpen }: {
   systems: Requirement[]
   selectedISId: number | null
   onSelect: (id: number) => void
@@ -157,6 +165,7 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
   onSearchChange: (v: string) => void
   theme: 'light' | 'dark'
   onThemeToggle: () => void
+  onAdminOpen: () => void
 }) {
   const filtered = systems.filter(r =>
     !search ||
@@ -219,6 +228,10 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
             style={{ flex: 1, padding: '8px', background: 'var(--navy)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
           >
             + Создать ИС
+          </button>
+          <button onClick={onAdminOpen} title="Управление пользователями"
+            style={{ padding: '8px 10px', background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-600)', flexShrink: 0 }}>
+            <GearIcon />
           </button>
           <button onClick={onThemeToggle} title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
             style={{ padding: '8px 10px', background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-600)', flexShrink: 0 }}>
@@ -454,6 +467,15 @@ function Pill({ count, label, color }: { count: number; label: string; color: st
     <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, color, background: color + '15', fontWeight: 600, border: `1px solid ${color}30` }}>
       {count} {label}
     </span>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </svg>
   )
 }
 
