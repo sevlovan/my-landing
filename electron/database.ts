@@ -92,12 +92,30 @@ function initSchema() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS system_remarks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      is_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      module_id INTEGER REFERENCES requirements(id) ON DELETE SET NULL,
+      priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('high','medium','low')),
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_progress','resolved','closed')),
+      author TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_req_parent ON requirements(parent_id);
     CREATE INDEX IF NOT EXISTS idx_req_type ON requirements(type);
     CREATE INDEX IF NOT EXISTS idx_ver_req ON requirement_versions(requirement_id);
     CREATE INDEX IF NOT EXISTS idx_rem_ft ON remarks(ft_id);
     CREATE INDEX IF NOT EXISTS idx_appr_ft ON approvals(ft_id);
+    CREATE INDEX IF NOT EXISTS idx_srem_is ON system_remarks(is_id);
   `)
+
+  if (ver < 4) {
+    db.prepare('UPDATE _schema_ver SET ver = 4').run()
+  }
 
   const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
   if (userCount === 0) {
@@ -163,6 +181,19 @@ export interface User {
   name: string
   role: 'admin' | 'user'
   created_at: string
+}
+
+export interface SystemRemark {
+  id: number
+  is_id: number
+  title: string
+  description: string
+  module_id: number | null
+  priority: 'high' | 'medium' | 'low'
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  author: string
+  created_at: string
+  updated_at: string
 }
 
 export function listRequirements(): Requirement[] {
@@ -416,4 +447,33 @@ export function updateUser(id: number, data: Partial<Pick<User, 'name' | 'role'>
 
 export function deleteUser(id: number): void {
   getDb().prepare('DELETE FROM users WHERE id = ?').run(id)
+}
+
+// --- System Remarks ---
+export function listSystemRemarks(isId: number): SystemRemark[] {
+  return getDb().prepare('SELECT * FROM system_remarks WHERE is_id = ? ORDER BY id DESC').all(isId) as SystemRemark[]
+}
+
+export function createSystemRemark(data: Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>): SystemRemark {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const result = database.prepare(`
+    INSERT INTO system_remarks (is_id, title, description, module_id, priority, status, author, created_at, updated_at)
+    VALUES (@is_id, @title, @description, @module_id, @priority, @status, @author, @created_at, @updated_at)
+  `).run({ ...data, created_at: now, updated_at: now })
+  return database.prepare('SELECT * FROM system_remarks WHERE id = ?').get(result.lastInsertRowid) as SystemRemark
+}
+
+export function updateSystemRemark(
+  id: number,
+  data: Partial<Pick<SystemRemark, 'title' | 'description' | 'module_id' | 'priority' | 'status' | 'author'>>
+): void {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const fields = Object.keys(data).map(k => `${k} = @${k}`).join(', ')
+  if (fields) database.prepare(`UPDATE system_remarks SET ${fields}, updated_at = @updated_at WHERE id = @id`).run({ ...data, updated_at: now, id })
+}
+
+export function deleteSystemRemark(id: number): void {
+  getDb().prepare('DELETE FROM system_remarks WHERE id = ?').run(id)
 }

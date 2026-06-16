@@ -62,6 +62,19 @@ export interface User {
   created_at: string
 }
 
+export interface SystemRemark {
+  id: number
+  is_id: number
+  title: string
+  description: string
+  module_id: number | null
+  priority: 'high' | 'medium' | 'low'
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  author: string
+  created_at: string
+  updated_at: string
+}
+
 export interface TreeNode {
   requirement: Requirement
   children: TreeNode[]
@@ -138,6 +151,12 @@ declare global {
         list: () => Promise<User[]>
         create: (data: Pick<User, 'name' | 'role'>) => Promise<User>
         update: (id: number, data: Partial<Pick<User, 'name' | 'role'>>) => Promise<boolean>
+        delete: (id: number) => Promise<boolean>
+      }
+      systemRemark: {
+        list: (isId: number) => Promise<SystemRemark[]>
+        create: (data: Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>) => Promise<SystemRemark>
+        update: (id: number, data: Partial<Pick<SystemRemark, 'title' | 'description' | 'module_id' | 'priority' | 'status' | 'author'>>) => Promise<boolean>
         delete: (id: number) => Promise<boolean>
       }
       export: {

@@ -29,6 +29,12 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: number, data: unknown) => ipcRenderer.invoke('user:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('user:delete', id),
   },
+  systemRemark: {
+    list: (isId: number) => ipcRenderer.invoke('system-remark:list', isId),
+    create: (data: unknown) => ipcRenderer.invoke('system-remark:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('system-remark:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('system-remark:delete', id),
+  },
   export: {
     excel: (requirements: unknown) => ipcRenderer.invoke('export:excel', requirements),
     word: (requirements: unknown) => ipcRenderer.invoke('export:word', requirements),

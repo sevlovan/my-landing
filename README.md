@@ -1,1 +1,5 @@
-[index.html](https://github.com/user-attachments/files/26490519/index.html)
+# СУИД — Реестр функциональных требований
+
+Десктопное приложение для управления функциональными требованиями ИС.
+
+Подробная документация для разработчиков: [requirements-app/CLAUDE.md](requirements-app/CLAUDE.md)
