@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark } from './types'
+import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark, User } from './types'
 import { useRequirements } from './hooks/useRequirements'
 import { useUsers } from './hooks/useUsers'
 import { DetailPanel } from './components/DetailPanel'
@@ -256,7 +256,7 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users }:
   selectedId: number | null
   onSelect: (r: Requirement) => void
   onNew: (type: RequirementType, parentId?: number) => void
-  users: ReturnType<typeof import('./hooks/useUsers').useUsers>['users']
+  users: User[]
 }) {
   const [tab, setTab] = useState<ISTab>('architecture')
   const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
