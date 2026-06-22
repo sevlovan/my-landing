@@ -4,7 +4,7 @@
   "description": "Desktop Requirements Management Application",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "tsc -p tsconfig.electron.json && concurrently -n VITE,ELECTRON -c cyan,yellow \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "tsc -p tsconfig.electron.json && concurrently -n VITE,ELECTRON -c cyan,yellow \"vite\" \"wait-on tcp:localhost:5173 && electron .\"",
     "build": "vite build && tsc -p tsconfig.electron.json && electron-builder",
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
