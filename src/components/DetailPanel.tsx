@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Requirement, Remark, Approval, STATUS_LABELS, STATUS_COLORS, TYPE_LONG_LABELS, User, SystemRemark } from '../types'
+import { Requirement, Remark, Approval, STATUS_LABELS, STATUS_COLORS, TYPE_LONG_LABELS, User } from '../types'
 import { Badge } from './Badge'
 import { RequirementForm } from './RequirementForm'
 import { HistoryPanel } from './HistoryPanel'
@@ -14,7 +14,7 @@ interface DetailPanelProps {
   onClose: () => void
 }
 
-type Tab = 'info' | 'remarks' | 'approval' | 'sys_remarks'
+type Tab = 'info' | 'remarks' | 'approval'
 
 export function DetailPanel({ requirement, requirements, users = [], onUpdate, onDelete, onClose }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
@@ -24,10 +24,8 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
 
   const [remarks, setRemarks] = useState<Remark[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
-  const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
 
   const isFT = requirement.type === 'ft'
-  const isIS = requirement.type === 'is'
 
   useEffect(() => {
     setEditing(false)
@@ -36,14 +34,10 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
       window.api.remark.list(requirement.id).then(setRemarks).catch(() => {})
       window.api.approval.list(requirement.id).then(setApprovals).catch(() => {})
     }
-    if (isIS) {
-      window.api.systemRemark.list(requirement.id).then(setSystemRemarks).catch(() => {})
-    }
-  }, [requirement.id, isFT, isIS])
+  }, [requirement.id, isFT])
 
   const reloadRemarks = () => window.api.remark.list(requirement.id).then(setRemarks).catch(() => {})
   const reloadApprovals = () => window.api.approval.list(requirement.id).then(setApprovals).catch(() => {})
-  const reloadSystemRemarks = () => window.api.systemRemark.list(requirement.id).then(setSystemRemarks).catch(() => {})
 
   const parentReq = requirement.parent_id ? requirements.find(r => r.id === requirement.parent_id) : null
   const grandParent = parentReq?.parent_id ? requirements.find(r => r.id === parentReq.parent_id) : null
@@ -103,18 +97,15 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
         </div>
       </div>
 
-      {/* Tabs */}
-      {(isFT || isIS) && (
+      {/* Tabs (only for FT) */}
+      {isFT && (
         <div style={{ display: 'flex', borderBottom: '1px solid var(--gray-200)', background: 'var(--gray-50)', flexShrink: 0 }}>
-          {(isFT ? [
+          {([
             { key: 'info', label: 'Описание' },
             { key: 'remarks', label: `Замечания${remarks.length ? ` (${remarks.length})` : ''}` },
             { key: 'approval', label: `Согласование${approvals.length ? ` (${approvals.length})` : ''}` },
-          ] : [
-            { key: 'info', label: 'Информация' },
-            { key: 'sys_remarks', label: `Замечания${systemRemarks.length ? ` (${systemRemarks.length})` : ''}` },
           ] as { key: Tab; label: string }[]).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as Tab)}
+            <button key={t.key} onClick={() => setTab(t.key)}
               style={{
                 padding: '9px 16px', border: 'none', background: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 500,
@@ -129,7 +120,7 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {(tab === 'info') && (
+        {tab === 'info' && (
           <InfoTab
             requirement={requirement}
             requirements={requirements}
@@ -154,15 +145,6 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
               await reloadApprovals()
               window.api.req.list().catch(() => {})
             }}
-          />
-        )}
-        {tab === 'sys_remarks' && isIS && (
-          <SystemRemarksTab
-            isId={requirement.id}
-            systemRemarks={systemRemarks}
-            requirements={requirements}
-            users={users}
-            onReload={reloadSystemRemarks}
           />
         )}
       </div>
@@ -594,319 +576,6 @@ function ApprovalTab({ ftId, approvals, users, onReload }: { ftId: number; appro
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-const PRIORITY_COLORS: Record<string, string> = {
-  high: '#dc2626', medium: '#d97706', low: '#16a34a',
-}
-const PRIORITY_LABELS_RU: Record<string, string> = {
-  high: 'Высокий', medium: 'Средний', low: 'Низкий',
-}
-const SYS_STATUS_COLORS: Record<string, string> = {
-  open: '#dc2626', in_progress: '#d97706', resolved: '#2563eb', closed: '#64748b',
-}
-const SYS_STATUS_LABELS: Record<string, string> = {
-  open: 'Открыто', in_progress: 'В работе', resolved: 'Решено', closed: 'Закрыто',
-}
-
-function SystemRemarksTab({ isId, systemRemarks, requirements, users, onReload }: {
-  isId: number
-  systemRemarks: SystemRemark[]
-  requirements: Requirement[]
-  users: User[]
-  onReload: () => void
-}) {
-  const [adding, setAdding] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
-
-  // МД and БФ belonging to this IS
-  const mods = requirements.filter(r => r.type === 'mod' && r.parent_id === isId)
-  const modIds = new Set(mods.map(m => m.id))
-  const bfs = requirements.filter(r => r.type === 'bf' && r.parent_id !== null && (r.parent_id === isId || modIds.has(r.parent_id)))
-  const moduleOptions = [...mods, ...bfs]
-
-  const [form, setForm] = useState<Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>>({
-    is_id: isId, title: '', description: '', module_id: null,
-    priority: 'medium', status: 'open', author: '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  const resetForm = () => setForm({ is_id: isId, title: '', description: '', module_id: null, priority: 'medium', status: 'open', author: '' })
-
-  const handleAdd = async () => {
-    if (!form.title.trim()) return
-    setSaving(true)
-    try {
-      await window.api.systemRemark.create(form)
-      resetForm(); setAdding(false); onReload()
-    } finally { setSaving(false) }
-  }
-
-  const handleUpdate = async (id: number, data: Partial<SystemRemark>) => {
-    await window.api.systemRemark.update(id, data)
-    setEditingId(null); onReload()
-  }
-
-  const handleDelete = async (id: number) => {
-    await window.api.systemRemark.delete(id); onReload()
-  }
-
-  const moduleLabel = (id: number | null) => {
-    if (!id) return null
-    const r = requirements.find(x => x.id === id)
-    return r ? `${r.req_id} — ${r.title}` : null
-  }
-
-  return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>
-          Замечания к системе ({systemRemarks.length})
-        </span>
-        <button onClick={() => { setAdding(a => !a); if (adding) resetForm() }}
-          style={{
-            padding: '5px 12px', border: '1px solid var(--gray-200)', borderRadius: 6,
-            background: adding ? 'var(--gray-100)' : 'var(--card-bg)', fontSize: 12, fontWeight: 600,
-            color: 'var(--navy)', cursor: 'pointer',
-          }}>
-          {adding ? '✕ Отмена' : '+ Добавить'}
-        </button>
-      </div>
-
-      {adding && (
-        <SysRemarkForm
-          form={form}
-          setForm={setForm}
-          moduleOptions={moduleOptions}
-          users={users}
-          saving={saving}
-          onSave={handleAdd}
-          onCancel={() => { setAdding(false); resetForm() }}
-        />
-      )}
-
-      {systemRemarks.length === 0 && !adding ? (
-        <div style={{ textAlign: 'center', color: 'var(--gray-400)', fontSize: 13, padding: '32px 0' }}>
-          Замечания отсутствуют
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {systemRemarks.map(r => (
-            <SystemRemarkCard
-              key={r.id}
-              remark={r}
-              moduleOptions={moduleOptions}
-              users={users}
-              moduleLabel={moduleLabel}
-              isEditing={editingId === r.id}
-              onEdit={() => setEditingId(r.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSaveEdit={data => handleUpdate(r.id, data)}
-              onDelete={() => handleDelete(r.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SysRemarkForm({ form, setForm, moduleOptions, users, saving, onSave, onCancel }: {
-  form: Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>
-  setForm: React.Dispatch<React.SetStateAction<Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>>>
-  moduleOptions: Requirement[]
-  users: User[]
-  saving: boolean
-  onSave: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div style={{
-      background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
-      borderRadius: 8, padding: 14, marginBottom: 14,
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      <Field label="Заголовок *">
-        <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-          placeholder="Краткое описание замечания" style={inputSm} autoFocus />
-      </Field>
-      <Field label="Описание">
-        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-          placeholder="Подробное описание..." rows={3} style={{ ...inputSm, resize: 'vertical' }} />
-      </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Field label="Модуль / ФБ (опционально)">
-          <select value={form.module_id ?? ''} onChange={e => setForm(f => ({ ...f, module_id: Number(e.target.value) || null }))} style={inputSm}>
-            <option value="">— не указан —</option>
-            {moduleOptions.map(m => <option key={m.id} value={m.id}>{m.req_id} — {m.title}</option>)}
-          </select>
-        </Field>
-        <Field label="Автор">
-          <UserSelect value={form.author} onChange={v => setForm(f => ({ ...f, author: v }))} users={users} placeholder="выберите автора" style={inputSm} />
-        </Field>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Field label="Приоритет">
-          <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as SystemRemark['priority'] }))} style={inputSm}>
-            <option value="high">Высокий</option>
-            <option value="medium">Средний</option>
-            <option value="low">Низкий</option>
-          </select>
-        </Field>
-        <Field label="Статус">
-          <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as SystemRemark['status'] }))} style={inputSm}>
-            <option value="open">Открыто</option>
-            <option value="in_progress">В работе</option>
-            <option value="resolved">Решено</option>
-            <option value="closed">Закрыто</option>
-          </select>
-        </Field>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={onCancel}
-          style={{ padding: '5px 14px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12 }}>
-          Отмена
-        </button>
-        <button onClick={onSave} disabled={saving || !form.title.trim()}
-          style={{
-            padding: '5px 14px', border: 'none', borderRadius: 6,
-            background: 'var(--navy)', color: 'white', cursor: 'pointer',
-            fontSize: 12, fontWeight: 600, opacity: saving || !form.title.trim() ? 0.6 : 1,
-          }}>
-          {saving ? 'Сохранение...' : 'Добавить'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function SystemRemarkCard({ remark, moduleOptions, users, moduleLabel, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete }: {
-  remark: SystemRemark
-  moduleOptions: Requirement[]
-  users: User[]
-  moduleLabel: (id: number | null) => string | null
-  isEditing: boolean
-  onEdit: () => void
-  onCancelEdit: () => void
-  onSaveEdit: (data: Partial<SystemRemark>) => void
-  onDelete: () => void
-}) {
-  const [editForm, setEditForm] = useState<Partial<SystemRemark>>({})
-
-  useEffect(() => {
-    if (isEditing) {
-      setEditForm({ title: remark.title, description: remark.description, module_id: remark.module_id, priority: remark.priority, status: remark.status, author: remark.author })
-    }
-  }, [isEditing, remark])
-
-  const modLabel = moduleLabel(remark.module_id)
-
-  if (isEditing) {
-    return (
-      <div style={{
-        border: '1px solid var(--gray-200)', borderRadius: 8, padding: 12,
-        borderLeft: `3px solid ${SYS_STATUS_COLORS[remark.status] ?? '#64748b'}`,
-        display: 'flex', flexDirection: 'column', gap: 10,
-        background: 'var(--gray-50)',
-      }}>
-        <Field label="Заголовок *">
-          <input value={editForm.title ?? ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={inputSm} autoFocus />
-        </Field>
-        <Field label="Описание">
-          <textarea value={editForm.description ?? ''} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-            rows={3} style={{ ...inputSm, resize: 'vertical' }} />
-        </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <Field label="Модуль / ФБ">
-            <select value={editForm.module_id ?? ''} onChange={e => setEditForm(f => ({ ...f, module_id: Number(e.target.value) || null }))} style={inputSm}>
-              <option value="">— не указан —</option>
-              {moduleOptions.map(m => <option key={m.id} value={m.id}>{m.req_id} — {m.title}</option>)}
-            </select>
-          </Field>
-          <Field label="Автор">
-            <UserSelect value={editForm.author ?? ''} onChange={v => setEditForm(f => ({ ...f, author: v }))} users={users} placeholder="выберите" style={inputSm} />
-          </Field>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <Field label="Приоритет">
-            <select value={editForm.priority ?? 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value as SystemRemark['priority'] }))} style={inputSm}>
-              <option value="high">Высокий</option>
-              <option value="medium">Средний</option>
-              <option value="low">Низкий</option>
-            </select>
-          </Field>
-          <Field label="Статус">
-            <select value={editForm.status ?? 'open'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value as SystemRemark['status'] }))} style={inputSm}>
-              <option value="open">Открыто</option>
-              <option value="in_progress">В работе</option>
-              <option value="resolved">Решено</option>
-              <option value="closed">Закрыто</option>
-            </select>
-          </Field>
-        </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onCancelEdit}
-            style={{ padding: '4px 12px', border: '1px solid var(--gray-300)', borderRadius: 6, background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12, color: 'var(--gray-700)' }}>
-            Отмена
-          </button>
-          <button onClick={() => onSaveEdit(editForm)} disabled={!editForm.title?.trim()}
-            style={{ padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--navy)', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-            Сохранить
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{
-      border: '1px solid var(--gray-200)', borderRadius: 8, padding: 12,
-      borderLeft: `3px solid ${SYS_STATUS_COLORS[remark.status] ?? '#64748b'}`,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-          <span style={{
-            fontSize: 11, padding: '1px 6px', borderRadius: 99, fontWeight: 600,
-            color: SYS_STATUS_COLORS[remark.status], background: (SYS_STATUS_COLORS[remark.status] ?? '#64748b') + '15',
-            border: `1px solid ${(SYS_STATUS_COLORS[remark.status] ?? '#64748b')}30`,
-          }}>
-            {SYS_STATUS_LABELS[remark.status] ?? remark.status}
-          </span>
-          <span style={{
-            fontSize: 11, padding: '1px 6px', borderRadius: 99, fontWeight: 600,
-            color: PRIORITY_COLORS[remark.priority], background: (PRIORITY_COLORS[remark.priority] ?? '#64748b') + '15',
-            border: `1px solid ${(PRIORITY_COLORS[remark.priority] ?? '#64748b')}30`,
-          }}>
-            {PRIORITY_LABELS_RU[remark.priority] ?? remark.priority}
-          </span>
-          {remark.author && <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{remark.author}</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <button onClick={onEdit} title="Редактировать"
-            style={{ padding: '2px 6px', border: '1px solid var(--gray-200)', borderRadius: 4, background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--gray-500)', display: 'flex', alignItems: 'center' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </button>
-          <button onClick={onDelete} title="Удалить"
-            style={{ padding: '2px 6px', border: '1px solid #fca5a5', borderRadius: 4, background: '#fff5f5', cursor: 'pointer', fontSize: 11, color: '#dc2626' }}>
-            ✕
-          </button>
-        </div>
-      </div>
-      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--gray-800)', marginBottom: 4 }}>{remark.title}</div>
-      {modLabel && (
-        <div style={{ fontSize: 11, color: 'var(--navy)', marginBottom: 4, fontWeight: 500 }}>
-          {modLabel}
-        </div>
-      )}
-      {remark.description && (
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--gray-600)', lineHeight: 1.5 }}>{remark.description}</p>
-      )}
-      <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 6 }}>{fmtDate(remark.created_at)}</div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS } from './types'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark } from './types'
 import { useRequirements } from './hooks/useRequirements'
 import { useUsers } from './hooks/useUsers'
 import { DetailPanel } from './components/DetailPanel'
@@ -7,6 +7,7 @@ import { RequirementForm } from './components/RequirementForm'
 import { Toolbar } from './components/Toolbar'
 import { TableView } from './components/TableView'
 import { AdminPanel } from './components/AdminPanel'
+import { SystemRemarksTab } from './components/SystemRemarksTab'
 
 type Mode = 'view' | 'create'
 
@@ -106,11 +107,13 @@ export default function App() {
               <TableView requirements={requirements} selectedId={selectedId} onSelect={handleSelect} />
             ) : selectedIS ? (
               <ISMainContent
+                key={selectedIS.id}
                 is={selectedIS}
                 requirements={requirements}
                 selectedId={selectedId}
                 onSelect={handleSelect}
                 onNew={handleNew}
+                users={users}
               />
             ) : (
               <EmptyState onNew={() => handleNew('is')} />
@@ -245,13 +248,25 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
 
 // ── Main content for selected IS ───────────────────────────────────────────
 
-function ISMainContent({ is, requirements, selectedId, onSelect, onNew }: {
+type ISTab = 'architecture' | 'remarks'
+
+function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users }: {
   is: Requirement
   requirements: Requirement[]
   selectedId: number | null
   onSelect: (r: Requirement) => void
   onNew: (type: RequirementType, parentId?: number) => void
+  users: ReturnType<typeof import('./hooks/useUsers').useUsers>['users']
 }) {
+  const [tab, setTab] = useState<ISTab>('architecture')
+  const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
+
+  const reloadSystemRemarks = useCallback(() => {
+    window.api.systemRemark.list(is.id).then(setSystemRemarks).catch(() => {})
+  }, [is.id])
+
+  useEffect(() => { reloadSystemRemarks() }, [reloadSystemRemarks])
+
   const modules = requirements.filter(r => r.type === 'mod' && r.parent_id === is.id)
   const directBF = requirements.filter(r => r.type === 'bf' && r.parent_id === is.id)
   const modBFIds = requirements
@@ -261,9 +276,10 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew }: {
   const totalFT = requirements.filter(r => r.type === 'ft' && allBFIds.includes(r.parent_id ?? -1)).length
 
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* IS header */}
+      <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
               <span style={{ fontFamily: 'monospace', fontSize: 12, color: TYPE_COLORS.is, fontWeight: 700, background: '#f5f3ff', padding: '2px 8px', borderRadius: 5 }}>
@@ -273,31 +289,64 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew }: {
             <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gray-900)', margin: 0, lineHeight: 1.2 }}>{is.title}</h1>
             {is.description && <p style={{ color: 'var(--gray-500)', margin: '6px 0 0', fontSize: 13, lineHeight: 1.5 }}>{is.description}</p>}
           </div>
-          <button onClick={() => onSelect(is)}
-            style={{ padding: '6px 14px', border: '1px solid var(--gray-200)', borderRadius: 8, background: 'var(--card-bg)', color: 'var(--gray-600)', fontSize: 13, cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
-            Подробнее
-          </button>
         </div>
-        <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 12 }}>
+        <div style={{ display: 'flex', gap: 20, fontSize: 12 }}>
           <span style={{ color: TYPE_COLORS.mod, fontWeight: 600 }}>{modules.length} модулей</span>
           <span style={{ color: TYPE_COLORS.bf, fontWeight: 600 }}>{allBFIds.length} БФ</span>
           <span style={{ color: TYPE_COLORS.ft, fontWeight: 600 }}>{totalFT} ФТ</span>
         </div>
       </div>
 
-      <CollapsibleSection title="Модули" count={modules.length} color={TYPE_COLORS.mod} onAdd={() => onNew('mod', is.id)} addLabel="+ Модуль">
-        {modules.map(mod => (
-          <ModuleCard key={mod.id} mod={mod} requirements={requirements} selectedId={selectedId} onSelect={onSelect} onNew={onNew} />
+      {/* Tab bar */}
+      <div style={{
+        display: 'flex', borderBottom: '1px solid var(--gray-200)',
+        padding: '0 28px', marginTop: 14, flexShrink: 0,
+        background: 'var(--gray-50)',
+      }}>
+        {([
+          { key: 'architecture', label: 'Функциональная архитектура' },
+          { key: 'remarks', label: `Замечания${systemRemarks.length ? ` (${systemRemarks.length})` : ''}` },
+        ] as { key: ISTab; label: string }[]).map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{
+              padding: '9px 18px', border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 500,
+              color: tab === t.key ? 'var(--navy)' : 'var(--gray-500)',
+              borderBottom: tab === t.key ? '2px solid var(--navy)' : '2px solid transparent',
+            }}>
+            {t.label}
+          </button>
         ))}
-        {modules.length === 0 && <EmptyMsg>Нет модулей — функциональные блоки можно добавить напрямую к системе</EmptyMsg>}
-      </CollapsibleSection>
+      </div>
 
-      <CollapsibleSection title="Функциональные блоки (прямые)" count={directBF.length} color={TYPE_COLORS.bf} onAdd={() => onNew('bf', is.id)} addLabel="+ БФ">
-        {directBF.map(bf => (
-          <BFCard key={bf.id} bf={bf} requirements={requirements} selectedId={selectedId} onSelect={onSelect} onNew={onNew} />
-        ))}
-        {directBF.length === 0 && <EmptyMsg>Нет прямых БФ</EmptyMsg>}
-      </CollapsibleSection>
+      {/* Tab content */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {tab === 'architecture' && (
+          <div style={{ padding: '20px 28px' }}>
+            <CollapsibleSection title="Модули" count={modules.length} color={TYPE_COLORS.mod} onAdd={() => onNew('mod', is.id)} addLabel="+ Модуль">
+              {modules.map(mod => (
+                <ModuleCard key={mod.id} mod={mod} requirements={requirements} selectedId={selectedId} onSelect={onSelect} onNew={onNew} />
+              ))}
+              {modules.length === 0 && <EmptyMsg>Нет модулей — функциональные блоки можно добавить напрямую к системе</EmptyMsg>}
+            </CollapsibleSection>
+            <CollapsibleSection title="Функциональные блоки (прямые)" count={directBF.length} color={TYPE_COLORS.bf} onAdd={() => onNew('bf', is.id)} addLabel="+ БФ">
+              {directBF.map(bf => (
+                <BFCard key={bf.id} bf={bf} requirements={requirements} selectedId={selectedId} onSelect={onSelect} onNew={onNew} />
+              ))}
+              {directBF.length === 0 && <EmptyMsg>Нет прямых БФ</EmptyMsg>}
+            </CollapsibleSection>
+          </div>
+        )}
+        {tab === 'remarks' && (
+          <SystemRemarksTab
+            isId={is.id}
+            systemRemarks={systemRemarks}
+            requirements={requirements}
+            users={users}
+            onReload={reloadSystemRemarks}
+          />
+        )}
+      </div>
     </div>
   )
 }
