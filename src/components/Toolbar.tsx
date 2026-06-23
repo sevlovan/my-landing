@@ -1,13 +1,17 @@
 import React, { useState } from 'react'
-import { Requirement } from '../types'
+import { Requirement, ISTab } from '../types'
 
 interface ToolbarProps {
   requirements: Requirement[]
   view: 'tree' | 'table'
   onViewChange: (v: 'tree' | 'table') => void
+  selectedIS: Requirement | null
+  isTab: ISTab
+  onIsTabChange: (t: ISTab) => void
+  systemRemarksCount: number
 }
 
-export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
+export function Toolbar({ requirements, view, onViewChange, selectedIS, isTab, onIsTabChange, systemRemarksCount }: ToolbarProps) {
   const [exporting, setExporting] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -29,27 +33,34 @@ export function Toolbar({ requirements, view, onViewChange }: ToolbarProps) {
     }
   }
 
-  const isCount = requirements.filter(r => r.type === 'is').length
-  const modCount = requirements.filter(r => r.type === 'mod').length
-  const bfCount = requirements.filter(r => r.type === 'bf').length
-  const ftCount = requirements.filter(r => r.type === 'ft').length
+  const tabs: { key: ISTab; label: string }[] = [
+    { key: 'architecture', label: 'Функциональная архитектура' },
+    { key: 'remarks', label: `Замечания${systemRemarksCount ? ` (${systemRemarksCount})` : ''}` },
+  ]
 
   return (
     <div style={{
       height: 52, borderBottom: '1px solid var(--gray-200)',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 20px', background: 'var(--card-bg)', flexShrink: 0,
+      display: 'flex', alignItems: 'stretch',
+      background: 'var(--card-bg)', flexShrink: 0,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--gray-600)' }}>
-        <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{requirements.length} элементов</span>
-        <span style={{ color: 'var(--gray-300)' }}>|</span>
-        <span style={{ color: '#7c3aed', fontWeight: 600 }}>{isCount} ИС</span>
-        <span style={{ color: '#0891b2', fontWeight: 600 }}>{modCount} МД</span>
-        <span style={{ color: '#2563eb', fontWeight: 600 }}>{bfCount} БФ</span>
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>{ftCount} ФТ</span>
+      {/* IS tabs — left side, only in tree view with IS selected */}
+      <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
+        {view === 'tree' && selectedIS && tabs.map(t => (
+          <button key={t.key} onClick={() => onIsTabChange(t.key)}
+            style={{
+              padding: '0 20px', border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
+              color: isTab === t.key ? 'var(--navy)' : 'var(--gray-500)',
+              borderBottom: isTab === t.key ? '2px solid var(--navy)' : '2px solid transparent',
+            }}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Right controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', flexShrink: 0 }}>
         <div style={{ display: 'flex', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
           {(['tree', 'table'] as const).map(v => (
             <button key={v} onClick={() => onViewChange(v)}

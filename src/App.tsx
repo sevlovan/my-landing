@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Requirement, RequirementType, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark, User } from './types'
+import { Requirement, RequirementType, ISTab, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark, User } from './types'
 import { useRequirements } from './hooks/useRequirements'
 import { useUsers } from './hooks/useUsers'
 import { DetailPanel } from './components/DetailPanel'
@@ -22,6 +22,18 @@ export default function App() {
   const [createParentId, setCreateParentId] = useState<number | undefined>(undefined)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'tree' | 'table'>('tree')
+  const [isTab, setIsTab] = useState<ISTab>('architecture')
+  const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
+
+  const reloadSystemRemarks = useCallback(() => {
+    if (!selectedISId) { setSystemRemarks([]); return }
+    window.api.systemRemark.list(selectedISId).then(setSystemRemarks).catch(() => {})
+  }, [selectedISId])
+
+  useEffect(() => {
+    setIsTab('architecture')
+    reloadSystemRemarks()
+  }, [selectedISId])
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
   )
@@ -99,7 +111,15 @@ export default function App() {
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Toolbar requirements={requirements} view={view} onViewChange={setView} />
+        <Toolbar
+          requirements={requirements}
+          view={view}
+          onViewChange={setView}
+          selectedIS={selectedIS}
+          isTab={isTab}
+          onIsTabChange={setIsTab}
+          systemRemarksCount={systemRemarks.length}
+        />
 
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -114,6 +134,9 @@ export default function App() {
                 onSelect={handleSelect}
                 onNew={handleNew}
                 users={users}
+                tab={isTab}
+                systemRemarks={systemRemarks}
+                onReload={reloadSystemRemarks}
               />
             ) : (
               <EmptyState onNew={() => handleNew('is')} />
@@ -248,25 +271,17 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
 
 // ── Main content for selected IS ───────────────────────────────────────────
 
-type ISTab = 'architecture' | 'remarks'
-
-function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users }: {
+function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users, tab, systemRemarks, onReload }: {
   is: Requirement
   requirements: Requirement[]
   selectedId: number | null
   onSelect: (r: Requirement) => void
   onNew: (type: RequirementType, parentId?: number) => void
   users: User[]
+  tab: ISTab
+  systemRemarks: SystemRemark[]
+  onReload: () => void
 }) {
-  const [tab, setTab] = useState<ISTab>('architecture')
-  const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
-
-  const reloadSystemRemarks = useCallback(() => {
-    window.api.systemRemark.list(is.id).then(setSystemRemarks).catch(() => {})
-  }, [is.id])
-
-  useEffect(() => { reloadSystemRemarks() }, [reloadSystemRemarks])
-
   const modules = requirements.filter(r => r.type === 'mod' && r.parent_id === is.id)
   const directBF = requirements.filter(r => r.type === 'bf' && r.parent_id === is.id)
   const modBFIds = requirements
@@ -297,28 +312,6 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users }:
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex', borderBottom: '1px solid var(--gray-200)',
-        padding: '0 28px', marginTop: 14, flexShrink: 0,
-        background: 'var(--gray-50)',
-      }}>
-        {([
-          { key: 'architecture', label: 'Функциональная архитектура' },
-          { key: 'remarks', label: `Замечания${systemRemarks.length ? ` (${systemRemarks.length})` : ''}` },
-        ] as { key: ISTab; label: string }[]).map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            style={{
-              padding: '9px 18px', border: 'none', background: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 500,
-              color: tab === t.key ? 'var(--navy)' : 'var(--gray-500)',
-              borderBottom: tab === t.key ? '2px solid var(--navy)' : '2px solid transparent',
-            }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       {/* Tab content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {tab === 'architecture' && (
@@ -343,7 +336,7 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users }:
             systemRemarks={systemRemarks}
             requirements={requirements}
             users={users}
-            onReload={reloadSystemRemarks}
+            onReload={onReload}
           />
         )}
       </div>

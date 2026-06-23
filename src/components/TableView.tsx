@@ -40,13 +40,24 @@ export function TableView({ requirements, selectedId, onSelect }: TableViewProps
     setSort(s => s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: 1 })
   }
 
+  const isCount = requirements.filter(r => r.type === 'is').length
+  const modCount = requirements.filter(r => r.type === 'mod').length
+  const bfCount = requirements.filter(r => r.type === 'bf').length
+  const ftCount = requirements.filter(r => r.type === 'ft').length
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Filters */}
+      {/* Filters + stats */}
       <div style={{
         padding: '10px 20px', borderBottom: '1px solid var(--gray-100)',
         display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--gray-50)',
       }}>
+        <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--gray-800)' }}>{requirements.length}</span>
+        <span style={{ color: '#7c3aed', fontWeight: 600, fontSize: 12 }}>{isCount} ИС</span>
+        <span style={{ color: '#0891b2', fontWeight: 600, fontSize: 12 }}>{modCount} МД</span>
+        <span style={{ color: '#2563eb', fontWeight: 600, fontSize: 12 }}>{bfCount} БФ</span>
+        <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 12 }}>{ftCount} ФТ</span>
+        <div style={{ width: 1, height: 16, background: 'var(--gray-300)' }} />
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)' }}>Фильтры:</span>
         <FilterSelect label="Тип" value={filterType} onChange={setFilterType}
           options={[['all', 'Все типы'], ['is', 'ИС'], ['mod', 'МД'], ['bf', 'БФ'], ['ft', 'ФТ']]} />

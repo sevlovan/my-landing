@@ -1,4 +1,5 @@
 export type RequirementType = 'is' | 'mod' | 'bf' | 'ft'
+export type ISTab = 'architecture' | 'remarks'
 export type Priority = 'high' | 'medium' | 'low'
 export type Status = 'draft' | 'approved' | 'rejected' | 'in_review' | 'rework'
 
