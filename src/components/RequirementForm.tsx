@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Requirement, RequirementType, Priority, Status, TYPE_LONG_LABELS, User } from '../types'
+import { Requirement, RequirementType, Priority, Status, TYPE_LONG_LABELS, IS_PHASES, User } from '../types'
 import { UserSelect } from './UserSelect'
 
 interface RequirementFormProps {
@@ -25,6 +25,9 @@ export function RequirementForm({
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? 'medium')
   const [status, setStatus] = useState<Status>(initial?.status ?? 'draft')
   const [author, setAuthor] = useState(initial?.author ?? '')
+  const [vendor, setVendor] = useState(initial?.vendor ?? '')
+  const [product, setProduct] = useState(initial?.product ?? '')
+  const [isPhase, setIsPhase] = useState(initial?.is_phase ?? '')
   const [changedBy, setChangedBy] = useState('')
   const [comment, setComment] = useState('')
   const [reqId, setReqId] = useState(initial?.req_id ?? '')
@@ -76,6 +79,10 @@ export function RequirementForm({
           priority,
           status,
           author: author.trim(),
+          vendor: vendor.trim(),
+          product: product.trim(),
+          is_phase: isPhase,
+          contract_id: null,
         },
         changedBy.trim() || author.trim() || 'пользователь',
         comment.trim()
@@ -151,15 +158,24 @@ export function RequirementForm({
           </FieldGroup>
         )}
 
-        <FieldGroup label="Статус" error={undefined}>
-          <select value={status} onChange={e => setStatus(e.target.value as Status)} style={inputStyle}>
-            <option value="draft">Черновик</option>
-            <option value="in_review">На согласовании</option>
-            <option value="approved">Согласовано</option>
-            <option value="rework">На доработке</option>
-            <option value="rejected">Отклонено</option>
-          </select>
-        </FieldGroup>
+        {isIS ? (
+          <FieldGroup label="Статус" error={undefined}>
+            <select value={isPhase} onChange={e => setIsPhase(e.target.value)} style={inputStyle}>
+              <option value="">— не указан —</option>
+              {IS_PHASES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </FieldGroup>
+        ) : (
+          <FieldGroup label="Статус" error={undefined}>
+            <select value={status} onChange={e => setStatus(e.target.value as Status)} style={inputStyle}>
+              <option value="draft">Черновик</option>
+              <option value="in_review">На согласовании</option>
+              <option value="approved">Согласовано</option>
+              <option value="rework">На доработке</option>
+              <option value="rejected">Отклонено</option>
+            </select>
+          </FieldGroup>
+        )}
 
         {showAuthor && (
           <FieldGroup label={isIS ? 'Функциональный заказчик' : 'Автор'} error={errors.author}>
@@ -173,6 +189,19 @@ export function RequirementForm({
           </FieldGroup>
         )}
       </div>
+
+      {isIS && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FieldGroup label="Вендор" error={undefined}>
+            <input value={vendor} onChange={e => setVendor(e.target.value)}
+              placeholder="Название вендора" style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup label="Продукт" error={undefined}>
+            <input value={product} onChange={e => setProduct(e.target.value)}
+              placeholder="Название продукта" style={inputStyle} />
+          </FieldGroup>
+        </div>
+      )}
 
       {needsParent && (
         <FieldGroup

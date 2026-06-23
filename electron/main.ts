@@ -7,6 +7,7 @@ import {
   listApprovals, createApproval, getLastApproval, updateApproval,
   listUsers, createUser, updateUser, deleteUser,
   listSystemRemarks, createSystemRemark, updateSystemRemark, deleteSystemRemark,
+  listContracts, createContract, updateContract, deleteContract,
 } from './database'
 import { exportToExcel, exportToWord, exportToPdf } from './export'
 
@@ -79,6 +80,12 @@ function registerIpcHandlers() {
   ipcMain.handle('user:create', (_e, data: Parameters<typeof createUser>[0]) => createUser(data))
   ipcMain.handle('user:update', (_e, id: number, data: Parameters<typeof updateUser>[1]) => { updateUser(id, data); return true })
   ipcMain.handle('user:delete', (_e, id: number) => { deleteUser(id); return true })
+
+  // Contracts
+  ipcMain.handle('contract:list', (_e, isId: number) => listContracts(isId))
+  ipcMain.handle('contract:create', (_e, data: Parameters<typeof createContract>[0]) => createContract(data))
+  ipcMain.handle('contract:update', (_e, id: number, data: Parameters<typeof updateContract>[1]) => { updateContract(id, data); return true })
+  ipcMain.handle('contract:delete', (_e, id: number) => { deleteContract(id); return true })
 
   // System Remarks
   ipcMain.handle('system-remark:list', (_e, isId: number) => listSystemRemarks(isId))

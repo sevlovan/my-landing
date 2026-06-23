@@ -117,6 +117,50 @@ function initSchema() {
     db.prepare('UPDATE _schema_ver SET ver = 4').run()
   }
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      is_id INTEGER NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+      tz TEXT NOT NULL DEFAULT '',
+      n_izm INTEGER,
+      date_utv TEXT,
+      prich_vn_izm TEXT NOT NULL DEFAULT '',
+      noch INTEGER,
+      net INTEGER,
+      name_et TEXT NOT NULL DEFAULT '',
+      type_work TEXT NOT NULL DEFAULT '',
+      ist_fin TEXT NOT NULL DEFAULT '',
+      cost REAL,
+      komm TEXT NOT NULL DEFAULT '',
+      status_form_vr TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_contracts_is ON contracts(is_id);
+  `)
+
+  if (ver < 5) {
+    db.prepare('UPDATE _schema_ver SET ver = 5').run()
+  }
+
+  if (ver < 6) {
+    db.exec(`ALTER TABLE requirements ADD COLUMN contract_id INTEGER`)
+    db.prepare('UPDATE _schema_ver SET ver = 6').run()
+  }
+
+  if (ver < 7) {
+    db.exec(`
+      ALTER TABLE requirements ADD COLUMN vendor TEXT NOT NULL DEFAULT '';
+      ALTER TABLE requirements ADD COLUMN product TEXT NOT NULL DEFAULT '';
+    `)
+    db.prepare('UPDATE _schema_ver SET ver = 7').run()
+  }
+
+  if (ver < 8) {
+    db.exec(`ALTER TABLE requirements ADD COLUMN is_phase TEXT NOT NULL DEFAULT ''`)
+    db.prepare('UPDATE _schema_ver SET ver = 8').run()
+  }
+
   const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c
   if (userCount === 0) {
     db.prepare('INSERT INTO users (name, role) VALUES (?, ?)').run('Владимир Степанов', 'admin')
@@ -135,6 +179,7 @@ export interface Requirement {
   status: 'draft' | 'approved' | 'rejected' | 'in_review' | 'rework'
   cenn: string
   author: string
+  contract_id: number | null
   created_at: string
   updated_at: string
 }
@@ -245,7 +290,7 @@ export function updateRequirement(
 ): Requirement {
   const database = getDb()
   const now = new Date().toISOString()
-  const allowed = ['title', 'description', 'full_description', 'priority', 'status', 'cenn', 'author', 'parent_id']
+  const allowed = ['title', 'description', 'full_description', 'priority', 'status', 'cenn', 'author', 'parent_id', 'contract_id', 'vendor', 'product', 'is_phase']
   const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
   if (Object.keys(filtered).length === 0) return getRequirement(id)!
   const fields = Object.keys(filtered).map(k => `${k} = @${k}`).join(', ')
@@ -447,6 +492,54 @@ export function updateUser(id: number, data: Partial<Pick<User, 'name' | 'role'>
 
 export function deleteUser(id: number): void {
   getDb().prepare('DELETE FROM users WHERE id = ?').run(id)
+}
+
+// --- Contracts ---
+export interface Contract {
+  id: number
+  is_id: number
+  tz: string
+  n_izm: number | null
+  date_utv: string | null
+  prich_vn_izm: string
+  noch: number | null
+  net: number | null
+  name_et: string
+  type_work: string
+  ist_fin: string
+  cost: number | null
+  komm: string
+  status_form_vr: string
+  created_at: string
+  updated_at: string
+}
+
+export function listContracts(isId: number): Contract[] {
+  return getDb().prepare('SELECT * FROM contracts WHERE is_id = ? ORDER BY id').all(isId) as Contract[]
+}
+
+export function createContract(data: Omit<Contract, 'id' | 'created_at' | 'updated_at'>): Contract {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const result = database.prepare(`
+    INSERT INTO contracts (is_id, tz, n_izm, date_utv, prich_vn_izm, noch, net, name_et, type_work, ist_fin, cost, komm, status_form_vr, created_at, updated_at)
+    VALUES (@is_id, @tz, @n_izm, @date_utv, @prich_vn_izm, @noch, @net, @name_et, @type_work, @ist_fin, @cost, @komm, @status_form_vr, @created_at, @updated_at)
+  `).run({ ...data, created_at: now, updated_at: now })
+  return database.prepare('SELECT * FROM contracts WHERE id = ?').get(result.lastInsertRowid) as Contract
+}
+
+export function updateContract(
+  id: number,
+  data: Partial<Omit<Contract, 'id' | 'is_id' | 'created_at' | 'updated_at'>>
+): void {
+  const database = getDb()
+  const now = new Date().toISOString()
+  const fields = Object.keys(data).map(k => `${k} = @${k}`).join(', ')
+  if (fields) database.prepare(`UPDATE contracts SET ${fields}, updated_at = @updated_at WHERE id = @id`).run({ ...data, updated_at: now, id })
+}
+
+export function deleteContract(id: number): void {
+  getDb().prepare('DELETE FROM contracts WHERE id = ?').run(id)
 }
 
 // --- System Remarks ---

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Requirement, RequirementType, ISTab, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark, User } from './types'
+import { Requirement, RequirementType, ISTab, TYPE_COLORS, STATUS_LABELS, STATUS_COLORS, SystemRemark, Contract, User } from './types'
 import { useRequirements } from './hooks/useRequirements'
 import { useUsers } from './hooks/useUsers'
 import { DetailPanel } from './components/DetailPanel'
@@ -8,6 +8,7 @@ import { Toolbar } from './components/Toolbar'
 import { TableView } from './components/TableView'
 import { AdminPanel } from './components/AdminPanel'
 import { SystemRemarksTab } from './components/SystemRemarksTab'
+import { ContractsTab } from './components/ContractsTab'
 
 type Mode = 'view' | 'create'
 
@@ -23,16 +24,25 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'tree' | 'table'>('tree')
   const [isTab, setIsTab] = useState<ISTab>('architecture')
+  const [sidebarWidth, setSidebarWidth] = useState(240)
+  const [panelWidth, setPanelWidth] = useState(440)
   const [systemRemarks, setSystemRemarks] = useState<SystemRemark[]>([])
+  const [contracts, setContracts] = useState<Contract[]>([])
 
   const reloadSystemRemarks = useCallback(() => {
     if (!selectedISId) { setSystemRemarks([]); return }
     window.api.systemRemark.list(selectedISId).then(setSystemRemarks).catch(() => {})
   }, [selectedISId])
 
+  const reloadContracts = useCallback(() => {
+    if (!selectedISId) { setContracts([]); return }
+    window.api.contract.list(selectedISId).then(setContracts).catch(() => {})
+  }, [selectedISId])
+
   useEffect(() => {
     setIsTab('architecture')
     reloadSystemRemarks()
+    reloadContracts()
   }, [selectedISId])
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
@@ -95,6 +105,33 @@ export default function App() {
 
   const isSystems = requirements.filter(r => r.type === 'is')
 
+  const startResize = (
+    e: React.MouseEvent,
+    currentWidth: number,
+    setWidth: (w: number) => void,
+    min: number,
+    max: number,
+    invert = false
+  ) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = currentWidth
+    const onMove = (ev: MouseEvent) => {
+      const delta = invert ? startX - ev.clientX : ev.clientX - startX
+      setWidth(Math.max(min, Math.min(max, startW + delta)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
@@ -108,6 +145,8 @@ export default function App() {
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
         onAdminOpen={() => setShowAdmin(true)}
+        width={sidebarWidth}
+        onResizeStart={e => startResize(e, sidebarWidth, setSidebarWidth, 160, 480)}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -119,6 +158,7 @@ export default function App() {
           isTab={isTab}
           onIsTabChange={setIsTab}
           systemRemarksCount={systemRemarks.length}
+          contractsCount={contracts.length}
         />
 
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -137,6 +177,8 @@ export default function App() {
                 tab={isTab}
                 systemRemarks={systemRemarks}
                 onReload={reloadSystemRemarks}
+                contracts={contracts}
+                onReloadContracts={reloadContracts}
               />
             ) : (
               <EmptyState onNew={() => handleNew('is')} />
@@ -165,14 +207,19 @@ export default function App() {
           )}
 
           {mode === 'view' && selected && (
-            <DetailPanel
-              requirement={selected}
-              requirements={requirements}
-              users={users}
-              onUpdate={handleUpdate}
-              onDelete={handleDelete}
-              onClose={() => setSelectedId(null)}
-            />
+            <>
+              <DragHandle onMouseDown={e => startResize(e, panelWidth, setPanelWidth, 300, 700, true)} />
+              <DetailPanel
+                requirement={selected}
+                requirements={requirements}
+                users={users}
+                contracts={contracts}
+                width={panelWidth}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                onClose={() => setSelectedId(null)}
+              />
+            </>
           )}
         </div>
       </div>
@@ -182,7 +229,7 @@ export default function App() {
 
 // ── Left sidebar: IS list ──────────────────────────────────────────────────
 
-function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange, theme, onThemeToggle, onAdminOpen }: {
+function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchChange, theme, onThemeToggle, onAdminOpen, width, onResizeStart }: {
   systems: Requirement[]
   selectedISId: number | null
   onSelect: (id: number) => void
@@ -192,6 +239,8 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
   theme: 'light' | 'dark'
   onThemeToggle: () => void
   onAdminOpen: () => void
+  width: number
+  onResizeStart: (e: React.MouseEvent) => void
 }) {
   const filtered = systems.filter(r =>
     !search ||
@@ -200,7 +249,14 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
   )
 
   return (
-    <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', height: '100vh' }}>
+    <div style={{ width, flexShrink: 0, borderRight: '1px solid var(--gray-200)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', height: '100vh', position: 'relative' }}>
+      {/* Resize handle */}
+      <div
+        onMouseDown={onResizeStart}
+        style={{ position: 'absolute', right: -3, top: 0, bottom: 0, width: 6, cursor: 'col-resize', zIndex: 20 }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--navy)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      />
       <div style={{ padding: '14px 12px 10px', borderBottom: '1px solid var(--gray-100)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{ width: 30, height: 30, borderRadius: 7, background: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -271,7 +327,7 @@ function ISSidebar({ systems, selectedISId, onSelect, onNew, search, onSearchCha
 
 // ── Main content for selected IS ───────────────────────────────────────────
 
-function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users, tab, systemRemarks, onReload }: {
+function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users, tab, systemRemarks, onReload, contracts, onReloadContracts }: {
   is: Requirement
   requirements: Requirement[]
   selectedId: number | null
@@ -281,6 +337,8 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users, t
   tab: ISTab
   systemRemarks: SystemRemark[]
   onReload: () => void
+  contracts: Contract[]
+  onReloadContracts: () => void
 }) {
   const modules = requirements.filter(r => r.type === 'mod' && r.parent_id === is.id)
   const directBF = requirements.filter(r => r.type === 'bf' && r.parent_id === is.id)
@@ -337,6 +395,14 @@ function ISMainContent({ is, requirements, selectedId, onSelect, onNew, users, t
             requirements={requirements}
             users={users}
             onReload={onReload}
+          />
+        )}
+        {tab === 'contracts' && (
+          <ContractsTab
+            isId={is.id}
+            contracts={contracts}
+            requirements={requirements}
+            onReload={onReloadContracts}
           />
         )}
       </div>
@@ -535,6 +601,17 @@ function MoonIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
     </svg>
+  )
+}
+
+function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: 'var(--gray-200)', transition: 'background 0.15s', zIndex: 10 }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--navy)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'var(--gray-200)')}
+    />
   )
 }
 

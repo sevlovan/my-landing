@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Requirement, Remark, Approval, STATUS_LABELS, STATUS_COLORS, TYPE_LONG_LABELS, User } from '../types'
+import { Requirement, Remark, Approval, Contract, STATUS_LABELS, STATUS_COLORS, IS_PHASE_COLORS, TYPE_LONG_LABELS, User } from '../types'
 import { Badge } from './Badge'
 import { RequirementForm } from './RequirementForm'
 import { HistoryPanel } from './HistoryPanel'
@@ -9,6 +9,8 @@ interface DetailPanelProps {
   requirement: Requirement
   requirements: Requirement[]
   users?: User[]
+  contracts?: Contract[]
+  width?: number
   onUpdate: (id: number, data: Partial<Requirement>, changedBy: string, comment: string) => Promise<void>
   onDelete: (id: number) => Promise<void>
   onClose: () => void
@@ -16,7 +18,7 @@ interface DetailPanelProps {
 
 type Tab = 'info' | 'remarks' | 'approval'
 
-export function DetailPanel({ requirement, requirements, users = [], onUpdate, onDelete, onClose }: DetailPanelProps) {
+export function DetailPanel({ requirement, requirements, users = [], contracts = [], width, onUpdate, onDelete, onClose }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -39,12 +41,16 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
   const reloadRemarks = () => window.api.remark.list(requirement.id).then(setRemarks).catch(() => {})
   const reloadApprovals = () => window.api.approval.list(requirement.id).then(setApprovals).catch(() => {})
 
+  const handleContractChange = async (contractId: number | null) => {
+    await onUpdate(requirement.id, { contract_id: contractId }, 'система', '')
+  }
+
   const parentReq = requirement.parent_id ? requirements.find(r => r.id === requirement.parent_id) : null
   const grandParent = parentReq?.parent_id ? requirements.find(r => r.id === parentReq.parent_id) : null
 
   if (editing) {
     return (
-      <div style={panelStyle}>
+      <div style={panelStyle(width)}>
         <PanelHeader title="Редактирование" onClose={() => setEditing(false)} />
         <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
           <RequirementForm
@@ -64,7 +70,7 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
   }
 
   return (
-    <div style={panelStyle}>
+    <div style={panelStyle(width)}>
       {showHistory && <HistoryPanel requirement={requirement} onClose={() => setShowHistory(false)} />}
 
       {/* Header */}
@@ -76,7 +82,21 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
                 {requirement.req_id}
               </span>
               <Badge value={requirement.type} kind="type" />
-              <Badge value={requirement.status} kind="status" />
+              {requirement.type === 'is' ? (
+                requirement.is_phase ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                    color: IS_PHASE_COLORS[requirement.is_phase] ?? '#64748b',
+                    background: (IS_PHASE_COLORS[requirement.is_phase] ?? '#64748b') + '18',
+                    border: `1px solid ${(IS_PHASE_COLORS[requirement.is_phase] ?? '#64748b')}30`,
+                  }}>
+                    {requirement.is_phase}
+                  </span>
+                ) : null
+              ) : (
+                <Badge value={requirement.status} kind="status" />
+              )}
               {requirement.type !== 'is' && <Badge value={requirement.priority} kind="priority" small />}
             </div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1.4, margin: 0 }}>
@@ -126,6 +146,8 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
             requirements={requirements}
             parentReq={parentReq}
             grandParent={grandParent}
+            contracts={contracts}
+            onContractChange={handleContractChange}
           />
         )}
         {tab === 'remarks' && isFT && (
@@ -149,8 +171,8 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
         )}
       </div>
 
-      {/* Children (non-FT) */}
-      {!isFT && tab === 'info' && (
+      {/* Children (mod/bf only — IS info is on the ФА tab) */}
+      {!isFT && requirement.type !== 'is' && tab === 'info' && (
         <ChildrenSection requirement={requirement} requirements={requirements} />
       )}
 
@@ -185,11 +207,13 @@ export function DetailPanel({ requirement, requirements, users = [], onUpdate, o
   )
 }
 
-function InfoTab({ requirement, requirements, parentReq, grandParent }: {
+function InfoTab({ requirement, requirements, parentReq, grandParent, contracts, onContractChange }: {
   requirement: Requirement
   requirements: Requirement[]
   parentReq: Requirement | null | undefined
   grandParent: Requirement | null | undefined
+  contracts?: Contract[]
+  onContractChange?: (id: number | null) => void
 }) {
   return (
     <div style={{ padding: 20 }}>
@@ -216,6 +240,9 @@ function InfoTab({ requirement, requirements, parentReq, grandParent }: {
         <MetaGrid>
           <MetaRow label="Тип" value={TYPE_LONG_LABELS[requirement.type]} />
           {requirement.type === 'is' && <MetaRow label="Функциональный заказчик" value={requirement.author || '—'} />}
+          {requirement.type === 'is' && requirement.is_phase && <MetaRow label="Статус" value={requirement.is_phase} />}
+          {requirement.type === 'is' && requirement.vendor && <MetaRow label="Вендор" value={requirement.vendor} />}
+          {requirement.type === 'is' && requirement.product && <MetaRow label="Продукт" value={requirement.product} />}
           {requirement.type === 'ft' && <MetaRow label="Автор" value={requirement.author || '—'} />}
           <MetaRow label="Создано" value={fmtDate(requirement.created_at)} />
           <MetaRow label="Обновлено" value={fmtDate(requirement.updated_at)} />
@@ -223,6 +250,22 @@ function InfoTab({ requirement, requirements, parentReq, grandParent }: {
           {grandParent && <MetaRow label="ИС" value={`${grandParent.req_id} — ${grandParent.title}`} />}
         </MetaGrid>
       </Section>
+      {requirement.type === 'ft' && contracts && onContractChange && (
+        <Section title="Договор">
+          <select
+            value={requirement.contract_id ?? ''}
+            onChange={e => onContractChange(e.target.value ? Number(e.target.value) : null)}
+            style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--gray-200)', borderRadius: 7, fontSize: 13, outline: 'none', color: 'var(--gray-800)', background: 'var(--card-bg)' }}
+          >
+            <option value="">— не привязан —</option>
+            {contracts.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.tz || `Договор #${c.id}`}{c.name_et ? ` — ${c.name_et}` : ''}
+              </option>
+            ))}
+          </select>
+        </Section>
+      )}
     </div>
   )
 }
@@ -665,10 +708,10 @@ function ActionBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; la
   )
 }
 
-const panelStyle: React.CSSProperties = {
-  width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--card-bg)',
-  borderLeft: '1px solid var(--gray-200)', height: '100%', overflow: 'hidden', position: 'relative',
-}
+const panelStyle = (width?: number): React.CSSProperties => ({
+  width: width ?? 440, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--card-bg)',
+  height: '100%', overflow: 'hidden', position: 'relative',
+})
 
 const inputSm: React.CSSProperties = {
   width: '100%', padding: '6px 10px',

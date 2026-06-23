@@ -35,6 +35,12 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: number, data: unknown) => ipcRenderer.invoke('system-remark:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('system-remark:delete', id),
   },
+  contract: {
+    list: (isId: number) => ipcRenderer.invoke('contract:list', isId),
+    create: (data: unknown) => ipcRenderer.invoke('contract:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('contract:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('contract:delete', id),
+  },
   export: {
     excel: (requirements: unknown) => ipcRenderer.invoke('export:excel', requirements),
     word: (requirements: unknown) => ipcRenderer.invoke('export:word', requirements),

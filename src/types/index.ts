@@ -1,5 +1,5 @@
 export type RequirementType = 'is' | 'mod' | 'bf' | 'ft'
-export type ISTab = 'architecture' | 'remarks'
+export type ISTab = 'architecture' | 'remarks' | 'contracts'
 export type Priority = 'high' | 'medium' | 'low'
 export type Status = 'draft' | 'approved' | 'rejected' | 'in_review' | 'rework'
 
@@ -15,6 +15,10 @@ export interface Requirement {
   status: Status
   cenn: string
   author: string
+  contract_id: number | null
+  vendor: string
+  product: string
+  is_phase: string
   created_at: string
   updated_at: string
 }
@@ -76,6 +80,25 @@ export interface SystemRemark {
   updated_at: string
 }
 
+export interface Contract {
+  id: number
+  is_id: number
+  tz: string
+  n_izm: number | null
+  date_utv: string | null
+  prich_vn_izm: string
+  noch: number | null
+  net: number | null
+  name_et: string
+  type_work: string
+  ist_fin: string
+  cost: number | null
+  komm: string
+  status_form_vr: string
+  created_at: string
+  updated_at: string
+}
+
 export interface TreeNode {
   requirement: Requirement
   children: TreeNode[]
@@ -114,6 +137,15 @@ export const STATUS_LABELS: Record<Status, string> = {
   approved: 'Согласовано',
   rework: 'На доработке',
   rejected: 'Отклонено',
+}
+
+export const IS_PHASES = ['Концепция', 'Реализация', 'Опытная эксплуатация', 'Постоянная эксплуатация'] as const
+
+export const IS_PHASE_COLORS: Record<string, string> = {
+  'Концепция': '#64748b',
+  'Реализация': '#2563eb',
+  'Опытная эксплуатация': '#d97706',
+  'Постоянная эксплуатация': '#16a34a',
 }
 
 export const STATUS_COLORS: Record<Status, string> = {
@@ -158,6 +190,12 @@ declare global {
         list: (isId: number) => Promise<SystemRemark[]>
         create: (data: Omit<SystemRemark, 'id' | 'created_at' | 'updated_at'>) => Promise<SystemRemark>
         update: (id: number, data: Partial<Pick<SystemRemark, 'title' | 'description' | 'module_id' | 'priority' | 'status' | 'author'>>) => Promise<boolean>
+        delete: (id: number) => Promise<boolean>
+      }
+      contract: {
+        list: (isId: number) => Promise<Contract[]>
+        create: (data: Omit<Contract, 'id' | 'created_at' | 'updated_at'>) => Promise<Contract>
+        update: (id: number, data: Partial<Omit<Contract, 'id' | 'is_id' | 'created_at' | 'updated_at'>>) => Promise<boolean>
         delete: (id: number) => Promise<boolean>
       }
       export: {

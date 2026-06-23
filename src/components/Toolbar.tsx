@@ -9,9 +9,10 @@ interface ToolbarProps {
   isTab: ISTab
   onIsTabChange: (t: ISTab) => void
   systemRemarksCount: number
+  contractsCount: number
 }
 
-export function Toolbar({ requirements, view, onViewChange, selectedIS, isTab, onIsTabChange, systemRemarksCount }: ToolbarProps) {
+export function Toolbar({ requirements, view, onViewChange, selectedIS, isTab, onIsTabChange, systemRemarksCount, contractsCount }: ToolbarProps) {
   const [exporting, setExporting] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -36,6 +37,7 @@ export function Toolbar({ requirements, view, onViewChange, selectedIS, isTab, o
   const tabs: { key: ISTab; label: string }[] = [
     { key: 'architecture', label: 'Функциональная архитектура' },
     { key: 'remarks', label: `Замечания${systemRemarksCount ? ` (${systemRemarksCount})` : ''}` },
+    { key: 'contracts', label: `Договоры${contractsCount ? ` (${contractsCount})` : ''}` },
   ]
 
   return (
