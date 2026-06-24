@@ -1,5 +1,11 @@
 const http = require('http')
 const { spawn } = require('child_process')
+const electronPath = require('electron')
+
+// Claude Code sets ELECTRON_RUN_AS_NODE=1 which breaks Electron's module system.
+// We must remove it from the child environment before launching.
+const env = { ...process.env }
+delete env.ELECTRON_RUN_AS_NODE
 
 let attempts = 0
 let launched = false
@@ -13,7 +19,7 @@ function tryLaunch() {
       if (launched) return
       launched = true
       console.log(`[electron-wait] Vite ready after ${attempts} attempts — launching Electron`)
-      const proc = spawn('electron', ['.'], { stdio: 'inherit', shell: true })
+      const proc = spawn(electronPath, ['.'], { stdio: 'inherit', env })
       proc.on('close', code => process.exit(code ?? 0))
     }
   )
